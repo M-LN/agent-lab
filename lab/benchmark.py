@@ -48,8 +48,15 @@ def build_rows(run_dir: Path) -> list[dict[str, Any]]:
     meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
     started = meta.get("started") or datetime.now(timezone.utc).isoformat(timespec="seconds")
 
+    # A model measured only by measurement-only suites has nothing to rank, and
+    # recording it would put a 0.00 on the board. Judged by the records rather than
+    # by an empty score, so a model whose calls all failed is still reported.
+    graded = {rec["model_id"] for rec in records if rec.get("scored", True)}
+
     rows: list[dict[str, Any]] = []
     for entry in summary["leaderboard"]:
+        if entry["model_id"] not in graded:
+            continue
         rows.append(
             {
                 "run_id": run_dir.name,

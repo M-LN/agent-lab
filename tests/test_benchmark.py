@@ -177,3 +177,17 @@ def test_rerunning_one_suite_replaces_only_that_suite(bench):
     row = benchmark.current_board()[0]
     assert row["by_suite"] == {"capability": 0.25}, "the newer measurement of a suite wins"
     assert row["delta"] == pytest.approx(-0.75)
+
+
+def test_measurement_only_runs_are_not_recorded(bench):
+    """A ladder run has no suite scores; recording it would put a 0.00 on the board."""
+    run = make_run(bench, "run1", {"m/a": 1.0})
+    path = run / "results.jsonl"
+    records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    for record in records:
+        record["scored"] = False
+    path.write_text("\n".join(json.dumps(r) for r in records), encoding="utf-8")
+
+    added, excluded = benchmark.append_run(run)
+    assert added == 0 and excluded == []
+    assert benchmark.load_history() == []
