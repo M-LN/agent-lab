@@ -64,6 +64,9 @@ def regrade_run(
                 "checks": checks,
                 "passed_checks": sum(1 for c in checks if c["passed"]),
                 "total_checks": len(checks),
+                # Metrics are derived from the checks, so they must be recomputed too -
+                # otherwise a fixed grader leaves its old measurements behind.
+                "metrics": {c["metric"]: c["value"] for c in checks if "value" in c},
                 "prompt_fingerprint": spec.fingerprint,
                 "regraded_from": record.get("run_id"),
             }

@@ -63,9 +63,13 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
             per_prompt[(rec["suite"], rec["prompt_id"])].append(score)
             matrix[(rec["prompt_id"], mid)].append(score)
 
-        if rec.get("ladder") and rec.get("rung") is not None:
-            refused = bool((rec.get("metrics") or {}).get("refusal"))
-            ladder_rungs[(mid, rec["ladder"])].append((int(rec["rung"]), refused, rec["prompt_id"]))
+        metrics = rec.get("metrics") or {}
+        if rec.get("ladder") and rec.get("rung") is not None and "refusal" in metrics:
+            # A rung with no refusal measurement (empty or truncated answer) is
+            # missing data; counting it as answered would invent a threshold.
+            ladder_rungs[(mid, rec["ladder"])].append(
+                (int(rec["rung"]), bool(metrics["refusal"]), rec["prompt_id"])
+            )
 
         per_model_latency[mid].append(float(rec["latency_s"]))
         out_tokens = rec.get("completion_tokens")
@@ -87,7 +91,7 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
             "threshold": min(refused) if refused else None,
             "refused_rungs": refused,
             "answered": len(rungs) - len(refused),
-            "total": len(rungs),
+            "measured": len(rungs),
         }
 
     suites = sorted({r["suite"] for r in records})
