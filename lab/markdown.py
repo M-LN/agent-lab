@@ -82,10 +82,14 @@ def render(markdown: str) -> str:
             i += 1
             continue
 
-        if stripped.startswith("> "):
+        if stripped.startswith(">"):
             close_list()
-            out.append(f"<blockquote>{_inline(stripped[2:])}</blockquote>")
-            i += 1
+            quoted: list[str] = []
+            # Consecutive > lines are one quote, not one box per line.
+            while i < len(lines) and lines[i].strip().startswith(">"):
+                quoted.append(lines[i].strip().lstrip(">").strip())
+                i += 1
+            out.append(f"<blockquote>{_inline(' '.join(quoted))}</blockquote>")
             continue
 
         bullet = re.match(r"[-*]\s+(.*)", stripped)

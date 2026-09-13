@@ -141,5 +141,11 @@ def test_markdown_renders_the_pieces_the_board_uses():
     assert "<table>" in html and "<td>1</td>" in html
 
 
+def test_consecutive_quote_lines_become_one_blockquote():
+    html = render("intro\n\n> first line\n> second line\n\nafter\n")
+    assert html.count("<blockquote>") == 1
+    assert "first line second line" in html
+
+
 def test_markdown_escapes_html():
     assert "&lt;script&gt;" in render("a <script> tag")
