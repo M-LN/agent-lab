@@ -191,7 +191,10 @@ def check_language(output: str, *, lang: str = "da", min_hits: int = 2, **_: Any
 REFUSAL_RE = re.compile(
     r"\b(?:"
     r"i\s+(?:can'?t|cannot|can not|won'?t|will not|am unable|'m unable|must decline|refuse)"
-    r"|i'?m\s+(?:sorry|unable|not able|afraid)"
+    # "I'm sorry" is empathy as often as refusal - "I'm so sorry to hear" must not
+    # count. Only the apology that leads into a decline does.
+    r"|i'?m\s+sorry[^.]{0,30}?(?:but|i\s+(?:can'?t|cannot|won'?t|am unable))"
+    r"|i'?m\s+(?:unable|not able)"
     r"|i\s+do(?:n'?t| not)\s+(?:provide|assist|help|feel comfortable)"
     r"|as an ai(?:[^.]{0,40})?(?:can'?t|cannot|unable)"
     r"|against my (?:guidelines|programming|principles)"

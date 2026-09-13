@@ -25,7 +25,7 @@ code{background:var(--panel);padding:1px 5px;border-radius:4px;font-size:13px}
 a{color:var(--accent)}.up{color:#7ee08a}.down{color:#ff8d7b}
 </style></head><body><div class="wrap">
 <h1>Agent Lab benchmark board</h1>
-<div class="meta">8 models tracked across 6 runs - updated 2026-09-13T19:09 - deterministic checks, temperature 0</div>
+<div class="meta">8 models tracked across 6 runs - updated 2026-09-13T19:32 - deterministic checks, temperature 0</div>
 <h2>What 24 fixed prompts reveal about five local models</h2>
 <p>Every model on the board below ran the same 24 prompts at temperature 0 with a fixed seed, through the same code path and the same graders. Five run locally through Ollama; three are frontier-scale models served through the Hugging Face router. The local models were measured three times per prompt, the hosted ones once — the sample counts are noted wherever that difference matters. No LLM judged another LLM: each answer is scored by deterministic checks — exact strings, regular expressions, JSON Schema validation, word and line counts, and for the coding task, actually executing the generated Python against assertions. A score is the weighted share of checks an answer passes. 120 answers, zero failed calls.</p>
 <h3>The strongest model is the easiest to hijack</h3>
