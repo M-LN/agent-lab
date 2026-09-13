@@ -46,7 +46,8 @@ models:
     backend: ollama
     model: hf.co/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF:Q4_K_M
     tags: [local, hf-gguf, reasoning]
-    token_budget: 3.0   # spends most of its budget on internal reasoning
+    token_budget: 6.0   # 3.0 still truncated 6 of 16 ladder rungs: it spends
+                        # 1800+ tokens reasoning before it starts answering
 
   # ------------------------------------------------- Hugging Face Inference Providers
   # Enable these once HF_TOKEN is in .env (set enabled: true, or use --include-disabled).

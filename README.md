@@ -262,10 +262,10 @@ Et enkelt run svarer på "hvordan klarede modellerne sig i dag". Historikken sva
 Hvert run optages automatisk i `results/benchmark/history.jsonl` (slå fra med `--no-bench`):
 
 ```
+content/findings.md               den skrevne analyse - eneste kilde, delt af board og sitets /lab/-side
 results/benchmark/history.jsonl   én række per (run, model): scores, latency, trunkeringer, suite-version
 results/benchmark/board.md        samlet stilling + fuld run-historik
-results/benchmark/board.html      samme som side, på engelsk, klar til sitet
-results/benchmark/findings.md     den skrevne analyse der indlejres øverst i board.html
+results/benchmark/board.html      samme som side, på engelsk
 ```
 
 Hver række bærer et **suite-version-hash** (hash over prompternes `io_hash`). Ændrer du en
@@ -273,8 +273,10 @@ prompt, får suiten et nyt hash, og `delta`-kolonnen holdes tom i stedet for at 
 en model med et prompt-sæt der har flyttet sig. Modsat `results/runs/` er
 `results/benchmark/` **ikke** gitignored — det er det varige spor.
 
-Teksten i `findings.md` skrives på engelsk, fordi board-siden er formatet der skal
-kunne løftes direkte ind på patterniseverything.com.
+Teksten i `content/findings.md` skrives på engelsk, fordi den også er sitets `/lab/`-side.
+Tal i den er pladsholdere (`{{model_count}}`, `{{table:leaderboard}}`) der udfyldes fra
+kørslerne - en pladsholder uden værdi kaster en fejl frem for at rendere tomt, og en test
+fejler hvis narrativet beder om noget data ikke kan levere.
 
 ## Token-budget og trunkering
 
