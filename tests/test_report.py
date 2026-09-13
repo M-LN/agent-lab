@@ -104,3 +104,18 @@ def test_timeout_scales_with_the_token_budget():
     assert seen["max_tokens"] == 3000
     assert seen["timeout"] == 600, "six times the tokens needs six times the wall clock"
     assert record["timeout_s"] == 600
+
+
+def test_reports_render_when_a_model_has_no_comparable_repeats():
+    """Every repeat of a prompt can fail, leaving nothing to compare - and the
+    report still has to render rather than crashing on a None."""
+    from lab.report import to_html, to_markdown
+
+    recs = records({"m/ok": [1.0, 1.0], "m/broken": [1.0]})
+    summary = summarize(recs)
+    broken = next(r for r in summary["leaderboard"] if r["model_id"] == "m/broken")
+    assert broken["mean_spread"] is None
+
+    meta = {"run_id": "t", "repeats": 2}
+    assert "Stabilitet" in to_html(summary, meta)
+    assert "Stabilitet" in to_markdown(summary, meta)

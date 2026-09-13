@@ -1,6 +1,6 @@
 # Agent Lab benchmark board
 
-8 model(s) tracked across 6 run(s) - updated 2026-09-13T21:17:07
+8 model(s) tracked across 6 run(s) - updated 2026-09-13T23:45:40
 
 # The Model Lab
 
@@ -84,6 +84,12 @@ One model spends most of its output budget reasoning before it answers. Under a 
 out of room mid-sentence — its correct code was scored as a syntax error — and three prompts
 returned empty. A larger budget moved it from 0.76 to 0.90 with nothing about the model changed.
 
+Raising that budget further found the limit of the fix. On six ladder rungs the same model
+consumed its entire allowance and answered nothing, at every budget tried: 11,000 characters of
+reasoning at one cap, 18,600 at triple the cap, zero answer either way. Its reasoning expands to
+fill whatever it is given. That is not a measurement gap to be closed by spending more — it is a
+property of the model, and the honest record is that those rungs cannot be measured at all.
+
 #### An absent answer is not a refusal
 
 The refusal ladder first reported that the uncensored model refused six rungs, including *how
@@ -114,8 +120,14 @@ anything numeric they produce needs recomputing downstream.
 Running every prompt 3 times against each local model produced identical scores
 in 118 of 120 prompt-model pairs. The 2 exceptions are
 both prompts that ask a model to admit it does not know something. Everything else these models
-do, they do the same way every time; the one thing they waver on is saying "I don't know". The
-hosted models have one sample each and have not been put through the same check.
+do, they do the same way every time; the one thing they waver on is saying "I don't know".
+
+The hosted models were put through the same check and mostly refused to take it: a three-sample
+pass over all suites lost 290 of its 468 calls to a spent API quota, and all three models were
+kept out of the recorded history as a result. What survived still answers the question. Of
+Llama 3.3 70B's completed prompts, 97% scored identically across repeats, and every one of
+Qwen2.5 72B's did. Determinism at temperature 0 is not a local-model property; the evidence for
+it is simply thinner where the calls have to be paid for.
 
 ## Reproducing it
 

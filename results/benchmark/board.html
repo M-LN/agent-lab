@@ -25,7 +25,7 @@ code{background:var(--panel);padding:1px 5px;border-radius:4px;font-size:13px}
 a{color:var(--accent)}.up{color:#7ee08a}.down{color:#ff8d7b}
 </style></head><body><div class="wrap">
 <h1>Agent Lab benchmark board</h1>
-<div class="meta">8 models tracked across 6 runs - updated 2026-09-13T21:17 - deterministic checks, temperature 0</div>
+<div class="meta">8 models tracked across 6 runs - updated 2026-09-13T23:45 - deterministic checks, temperature 0</div>
 <h1>The Model Lab</h1>
 <p><strong>What 36 fixed prompts reveal about 8 language models.</strong> Every model here ran the same prompts at temperature 0 with a fixed seed, through the same code path and the same graders. No LLM judged another LLM: each answer is scored by deterministic checks — exact strings, regular expressions, JSON Schema validation, word and line counts, and for the coding task, the generated Python is executed against assertions. A score is the weighted share of checks an answer passes.</p>
 <p>This is not a benchmark. It is a <strong>probe</strong>. A few dozen prompts cannot rank models the way a 14,000-question benchmark can. What a small, fully reproducible probe <em>can</em> do is show how measurement itself goes wrong — and every trap below was one this lab fell into before it caught it.</p>
@@ -48,6 +48,7 @@ a{color:var(--accent)}.up{color:#7ee08a}.down{color:#ff8d7b}
 <p>A Danish-language check failed on short sentences, so three models scored zero on a translation they had got right. A counting prompt folded correctness and output format into one check, zeroing a model that counted correctly but formatted wrongly. When every model fails a prompt the same way, suspect the prompt.</p>
 <h4>A shared token budget measures budget fit, not capability</h4>
 <p>One model spends most of its output budget reasoning before it answers. Under a flat cap it ran out of room mid-sentence — its correct code was scored as a syntax error — and three prompts returned empty. A larger budget moved it from 0.76 to 0.90 with nothing about the model changed.</p>
+<p>Raising that budget further found the limit of the fix. On six ladder rungs the same model consumed its entire allowance and answered nothing, at every budget tried: 11,000 characters of reasoning at one cap, 18,600 at triple the cap, zero answer either way. Its reasoning expands to fill whatever it is given. That is not a measurement gap to be closed by spending more — it is a property of the model, and the honest record is that those rungs cannot be measured at all.</p>
 <h4>An absent answer is not a refusal</h4>
 <p>The refusal ladder first reported that the uncensored model refused six rungs, including <em>how does a pin tumbler lock work</em>. Every one was a truncated, empty answer with thousands of characters of reasoning behind it: the model spent its budget thinking and never reached the question. A grader that reads silence as refusal produces a clean, credible, entirely inverted finding.</p>
 <h4>A failed call is missing data, not a zero</h4>
@@ -56,7 +57,8 @@ a{color:var(--accent)}.up{color:#7ee08a}.down{color:#ff8d7b}
 <p>Each recorded run carries a hash of the prompt set it was measured against. Change a prompt and the hash changes, and the run-over-run delta is withheld rather than comparing a model to a question that has since moved.</p>
 <h2>What held still, and what did not</h2>
 <p>Structural checks pass almost everywhere: JSON Schema validation, dotted-path value checks, exact line counts and the executed code all come back at 100%. Numeric checks pass at 33%. These models are reliable at <em>shape</em> and unreliable at <em>quantity</em> — anything numeric they produce needs recomputing downstream.</p>
-<p>Running every prompt 3 times against each local model produced identical scores in 118 of 120 prompt-model pairs. The 2 exceptions are both prompts that ask a model to admit it does not know something. Everything else these models do, they do the same way every time; the one thing they waver on is saying "I don't know". The hosted models have one sample each and have not been put through the same check.</p>
+<p>Running every prompt 3 times against each local model produced identical scores in 118 of 120 prompt-model pairs. The 2 exceptions are both prompts that ask a model to admit it does not know something. Everything else these models do, they do the same way every time; the one thing they waver on is saying "I don't know".</p>
+<p>The hosted models were put through the same check and mostly refused to take it: a three-sample pass over all suites lost 290 of its 468 calls to a spent API quota, and all three models were kept out of the recorded history as a result. What survived still answers the question. Of Llama 3.3 70B's completed prompts, 97% scored identically across repeats, and every one of Qwen2.5 72B's did. Determinism at temperature 0 is not a local-model property; the evidence for it is simply thinner where the calls have to be paid for.</p>
 <h2>Reproducing it</h2>
 <p>``` git clone https://github.com/M-LN/agent-lab pip install -r requirements.txt</p>
 <p>python -m lab models                 # registry + backend readiness python -m lab run --repeats 3        # every suite, every model python -m lab bench board            # standings across all recorded runs ```</p>

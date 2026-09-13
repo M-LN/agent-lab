@@ -124,8 +124,14 @@ anything numeric they produce needs recomputing downstream.
 Running every prompt {{repeat_samples}} times against each local model produced identical scores
 in {{stable_cells}} of {{total_cells}} prompt-model pairs. The {{unstable_cells}} exceptions are
 both prompts that ask a model to admit it does not know something. Everything else these models
-do, they do the same way every time; the one thing they waver on is saying "I don't know". The
-hosted models have one sample each and have not been put through the same check.
+do, they do the same way every time; the one thing they waver on is saying "I don't know".
+
+The hosted models were put through the same check and mostly refused to take it: a three-sample
+pass over all suites lost 290 of its 468 calls to a spent API quota, and all three models were
+kept out of the recorded history as a result. What survived still answers the question. Of
+Llama 3.3 70B's completed prompts, 97% scored identically across repeats, and every one of
+Qwen2.5 72B's did. Determinism at temperature 0 is not a local-model property; the evidence for
+it is simply thinner where the calls have to be paid for.
 
 ## Reproducing it
 

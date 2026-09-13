@@ -394,7 +394,10 @@ def to_html(summary: dict[str, Any], meta: dict[str, Any]) -> str:
             [
                 row["label"],
                 _score_cell(row["stable_share"]) if row.get("stable_share") is not None else "-",
-                f'<span class="num">{row.get("mean_spread", 0):.3f}</span>',
+                # None when every repeat of a prompt failed, leaving one sample or none.
+                f'<span class="num">{row["mean_spread"]:.3f}</span>'
+                if row.get("mean_spread") is not None
+                else '<span class="lab-na">-</span>',
             ]
             for row in summary["leaderboard"]
         ]
