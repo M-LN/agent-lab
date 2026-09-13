@@ -13,6 +13,7 @@ from .backends.ollama import OllamaBackend
 from .benchmark import append_run, current_board, load_history, trend, write_board
 from .config import RESULTS_DIR, available_suites, load_config, load_suite
 from .regrade import regrade_run
+from .registry import add_entry, build_entry, existing_ids
 from .report import write_reports
 from .site import write_page
 from .runner import latest_run, load_records, merge_run, run_suites
@@ -275,6 +276,69 @@ def cmd_bench(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_add(args: argparse.Namespace) -> int:
+    """Register a model, measure it on every suite, and refresh what the site shows."""
+    backend = args.backend
+    model = args.model
+
+    if backend == "ollama":
+        installed = OllamaBackend().installed_models()
+        if model not in installed:
+            close = [name for name in installed if model.split(":")[0] in name]
+            console.print(f"[red]Not pulled:[/red] {model}")
+            if close:
+                console.print(f"  did you mean: {', '.join(close)}")
+            console.print(f"  run first:  [bold]ollama pull {model}[/bold]")
+            return 1
+    else:
+        ok, detail = get_backend("hf").available(model)
+        if not ok:
+            console.print(f"[red]HF backend cannot serve {model}:[/red] {detail}")
+            return 1
+
+    known = existing_ids()
+    already = [mid for mid, name in known.items() if name == model]
+    if already:
+        model_id = already[0]
+        console.print(f"[yellow]Already in the registry[/yellow] as {model_id} — measuring it again.")
+    else:
+        model_id, block = build_entry(
+            model, backend=backend, model_id=args.id, label=args.label, token_budget=args.token_budget
+        )
+        if model_id in known:
+            console.print(f"[red]Model id already taken:[/red] {model_id} (pass --id)")
+            return 1
+        console.print(f"[cyan]Adding to the registry:[/cyan]\n{block}")
+        if args.dry_run:
+            console.print("[dim]dry run — nothing written, nothing measured[/dim]")
+            return 0
+        add_entry(block)
+
+    if args.dry_run:
+        console.print("[dim]dry run — not measuring[/dim]")
+        return 0
+
+    run_args = argparse.Namespace(
+        suite=args.suite,
+        models=[model_id],
+        only=None,
+        repeats=args.repeats,
+        run_id=args.run_id or f"add-{model_id.split('/')[-1]}",
+        include_disabled=True,
+        allow_code_exec=args.allow_code_exec,
+        merge_into=None,
+        no_bench=False,
+    )
+    code = cmd_run(run_args)
+    if code != 0:
+        return code
+
+    if args.no_publish:
+        console.print("[dim]Skipping publish. Run `python -m lab publish` when ready.[/dim]")
+        return 0
+    return cmd_publish(argparse.Namespace(site=None, no_site=args.no_site))
+
+
 def cmd_publish(args: argparse.Namespace) -> int:
     """Refresh everything downstream of the raw results, in dependency order."""
     runs_dir = RESULTS_DIR / "runs"
@@ -361,6 +425,21 @@ def build_parser() -> argparse.ArgumentParser:
     regrade.add_argument("--out", help="target run id (default: <run>-regraded)")
     regrade.add_argument("--allow-code-exec", action="store_true")
     regrade.set_defaults(func=cmd_regrade)
+
+    add = sub.add_parser("add", help="register a model, measure it on every suite, refresh the site")
+    add.add_argument("model", help="ollama model name (see `ollama list`) or a Hugging Face repo id")
+    add.add_argument("--backend", choices=["ollama", "hf"], default="ollama")
+    add.add_argument("--id", help="registry id (default: derived from the model name)")
+    add.add_argument("--label", help="display name on the board")
+    add.add_argument("--token-budget", type=float, help="multiplier on each prompt's max_tokens")
+    add.add_argument("--suite", "-s", action="append", help="limit to these suites (default: all)")
+    add.add_argument("--repeats", type=int, default=1)
+    add.add_argument("--run-id")
+    add.add_argument("--allow-code-exec", action="store_true")
+    add.add_argument("--no-publish", action="store_true", help="measure but do not refresh the board or page")
+    add.add_argument("--no-site", action="store_true", help="refresh the board but not the site page")
+    add.add_argument("--dry-run", action="store_true", help="show the registry entry without writing or measuring")
+    add.set_defaults(func=cmd_add)
 
     publish = sub.add_parser("publish", help="refresh reports, board and the site page from the recorded runs")
     publish.add_argument("--site", help="path to the site's lab/index.html")

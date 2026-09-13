@@ -67,6 +67,7 @@ python -m lab run -s capability -m local/*
 | `python -m lab bench add [run]` | Optager et run i benchmark-historikken |
 | `python -m lab bench trend <model_id>` | Én models score over tid |
 | `python -m lab publish` | Opdaterer rapporter, board og sitets `/lab/`-side fra de gemte kørsler |
+| `python -m lab add <model>` | Registrerer en model, måler den på alle suiter og opdaterer sitet |
 
 ### Rette en check uden at køre 120 kald igen
 
@@ -118,7 +119,28 @@ Backenden kalder det OpenAI-kompatible endpoint `https://router.huggingface.co/v
 så enhver model som en provider hoster kan tilføjes ved at skrive dens repo-id i registret.
 Vil du låse en model til én bestemt provider, sæt `extra: {provider: together}` på modellen.
 
-## Sådan tilføjer du en model
+## Tilføj og mål en ny model
+
+```bash
+ollama pull gemma3:12b
+python -m lab add gemma3:12b
+```
+
+Det er hele turen fra hentet model til opdateret board: `add` tjekker at modellen faktisk er
+hentet, skriver registry-linjen (med tags, og token-budget hvis navnet tyder på en
+reasoning-model), kører alle suiter, optager kørslen i historikken og kalder `publish`.
+Push til sitet er fortsat dit.
+
+```bash
+python -m lab add gemma3:12b --dry-run          # vis registry-linjen, skriv og mål ikke
+python -m lab add google/gemma-3-27b-it --backend hf
+python -m lab add gemma3:12b -s guardrails --no-publish
+```
+
+Er modellen allerede i registret, springer den indskrivningen over og måler bare igen.
+`--dry-run` er værd at bruge først, hvis du vil se hvilke tags og hvilket id den udleder.
+
+## Sådan tilføjer du en model manuelt
 
 ```yaml
 - id: hf/qwen3-30b
