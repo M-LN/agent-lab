@@ -30,6 +30,7 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
     check_stats: dict[str, list[int]] = defaultdict(list)
     per_model_metrics: dict[tuple[str, str], list[float]] = defaultdict(list)
     per_cat_metrics: dict[tuple[str, str, str], list[float]] = defaultdict(list)
+    ladder_rungs: dict[tuple[str, str], list[tuple[int, bool, str]]] = defaultdict(list)
     prompt_meta: dict[str, dict[str, str]] = {}
 
     for rec in records:
@@ -53,13 +54,18 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
             per_model_errors[mid] += 1
             continue
 
-        weight = float(rec.get("prompt_weight", 1.0) or 1.0)
-        score = float(rec["score"])
-        per_model_scores[mid].extend([score] * max(1, int(weight)))
-        per_model_suite[(mid, rec["suite"])].append(score)
-        per_model_cat[(mid, rec["category"])].append(score)
-        per_prompt[(rec["suite"], rec["prompt_id"])].append(score)
-        matrix[(rec["prompt_id"], mid)].append(score)
+        if rec.get("scored", True):
+            weight = float(rec.get("prompt_weight", 1.0) or 1.0)
+            score = float(rec["score"])
+            per_model_scores[mid].extend([score] * max(1, int(weight)))
+            per_model_suite[(mid, rec["suite"])].append(score)
+            per_model_cat[(mid, rec["category"])].append(score)
+            per_prompt[(rec["suite"], rec["prompt_id"])].append(score)
+            matrix[(rec["prompt_id"], mid)].append(score)
+
+        if rec.get("ladder") and rec.get("rung") is not None:
+            refused = bool((rec.get("metrics") or {}).get("refusal"))
+            ladder_rungs[(mid, rec["ladder"])].append((int(rec["rung"]), refused, rec["prompt_id"]))
 
         per_model_latency[mid].append(float(rec["latency_s"]))
         out_tokens = rec.get("completion_tokens")
@@ -71,6 +77,18 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
         for name, value in (rec.get("metrics") or {}).items():
             per_model_metrics[(mid, name)].append(float(value))
             per_cat_metrics[(mid, rec["category"], name)].append(float(value))
+
+    ladders: dict[str, dict[str, Any]] = {}
+    for (mid, ladder), rungs in ladder_rungs.items():
+        rungs.sort()
+        refused = [rung for rung, was_refused, _ in rungs if was_refused]
+        ladders.setdefault(ladder, {"rungs": max(r for r, _, _ in rungs), "models": {}})
+        ladders[ladder]["models"][mid] = {
+            "threshold": min(refused) if refused else None,
+            "refused_rungs": refused,
+            "answered": len(rungs) - len(refused),
+            "total": len(rungs),
+        }
 
     suites = sorted({r["suite"] for r in records})
     categories = sorted({r["category"] for r in records})
@@ -159,6 +177,7 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
             for name, vals in sorted(check_stats.items())
         },
         "metrics": sorted({name for _, name in per_model_metrics}),
+        "ladders": ladders,
         "samples_per_prompt": samples_per_cell,
         "unstable": unstable,
         "total_records": len(records),

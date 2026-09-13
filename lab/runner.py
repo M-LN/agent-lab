@@ -28,6 +28,7 @@ class Task:
     suite: str
     prompt: PromptSpec
     repeat: int
+    scored: bool = True
 
 
 def _now() -> str:
@@ -85,6 +86,9 @@ def execute_task(
         "prompt_fingerprint": task.prompt.fingerprint,
         "io_hash": task.prompt.io_hash,
         "category": task.prompt.category,
+        "scored": task.scored,
+        "ladder": task.prompt.ladder,
+        "rung": task.prompt.rung,
         "prompt_weight": task.prompt.weight,
         "repeat": task.repeat,
         "model_id": task.model.id,
@@ -130,7 +134,7 @@ def run_suites(
     # Model-major order: a local model stays loaded for all its prompts instead of
     # being swapped in and out of memory between every single call.
     tasks = [
-        Task(model=model, suite=suite.name, prompt=prompt, repeat=r)
+        Task(model=model, suite=suite.name, prompt=prompt, repeat=r, scored=suite.scored)
         for model in models
         for suite in suites
         for prompt in suite.prompts

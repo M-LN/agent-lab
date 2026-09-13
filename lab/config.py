@@ -52,6 +52,10 @@ class PromptSpec:
     temperature: float | None = None
     weight: float = 1.0
     note: str | None = None
+    # A ladder is one topic in rungs of rising sensitivity; the pattern is which
+    # rung a model stops at, not whether any single answer passes.
+    ladder: str | None = None
+    rung: int | None = None
     # An optional prior exchange, so a prompt can test what a model does under
     # pushback rather than only what it says first.
     messages: list[dict[str, str]] | None = None
@@ -92,6 +96,9 @@ class Suite:
     name: str
     description: str
     prompts: list[PromptSpec]
+    # A measurement suite records behaviour without grading it, so it never
+    # enters the leaderboard where a "score" would be meaningless.
+    scored: bool = True
 
 
 @dataclass
@@ -137,6 +144,7 @@ def load_suite(name_or_path: str) -> Suite:
         name=data.get("suite", path.stem),
         description=data.get("description", ""),
         prompts=prompts,
+        scored=bool(data.get("scored", True)),
     )
 
 
