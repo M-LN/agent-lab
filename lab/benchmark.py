@@ -299,17 +299,33 @@ def to_board_html(board: list[dict[str, Any]], history: list[dict[str, Any]], no
     )
 
 
-def notes_path() -> Path:
-    return BENCH_DIR / "findings.md"
+def notes(history: list[dict[str, Any]]) -> str | None:
+    """The shared narrative, with the blocks only the site page renders dropped.
+
+    The board keeps its own standings and history tables below the prose, so it asks
+    for the analysis without the inline tables.
+    """
+    from . import content
+    from .site import narrative_values
+
+    if not content.CONTENT.exists():
+        return None
+    text = content.load()
+    values = narrative_values(history)
+    return content.render(
+        text,
+        values,
+        drop={"chart", "table:leaderboard", "table:injection", "table:ladder", "table:history"},
+    )
 
 
 def write_board() -> dict[str, Path]:
     history = load_history()
     board = current_board(history)
-    notes = notes_path().read_text(encoding="utf-8") if notes_path().exists() else None
+    notes_text = notes(history)
 
     BENCH_DIR.mkdir(parents=True, exist_ok=True)
     paths = {"markdown": BENCH_DIR / "board.md", "html": BENCH_DIR / "board.html"}
-    paths["markdown"].write_text(to_board_markdown(board, history, notes), encoding="utf-8")
-    paths["html"].write_text(to_board_html(board, history, notes), encoding="utf-8")
+    paths["markdown"].write_text(to_board_markdown(board, history, notes_text), encoding="utf-8")
+    paths["html"].write_text(to_board_html(board, history, notes_text), encoding="utf-8")
     return paths
