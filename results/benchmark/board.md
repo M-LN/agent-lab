@@ -1,6 +1,6 @@
 # Agent Lab benchmark board
 
-8 model(s) tracked across 5 run(s) - updated 2026-09-13T19:55:10
+8 model(s) tracked across 6 run(s) - updated 2026-09-13T20:55:49
 
 # The Model Lab
 
@@ -144,9 +144,9 @@ prompts that have since changed.
 | 1 | Qwen3 8B (lokal) | ollama | 0.91 | - | 0.92 | 0.92 | 0.89 | 37.38s | 8.1 | 5 | 0 | guardrails-local, repeats3 |
 | 2 | Qwen2.5 72B (HF) | hf | 0.89 | - | 0.90 | - | 0.88 | 2.8s | 8.1 | 0 | 1 | hf-capability, hf-robustness |
 | 3 | Qwythos 9B (lokal, HF GGUF) | ollama | 0.89 | - | 0.92 | 0.85 | 0.89 | 35.45s | 14.0 | 3 | 0 | guardrails-local, repeats3 |
-| 4 | DeepSeek V3 (HF) | hf | 0.82 | - | 0.90 | - | 0.74 | 1.45s | 19.0 | 0 | 0 | hf-capability, hf-robustness |
+| 4 | DeepSeek V3 (HF) | hf | 0.86 | - | 0.90 | 0.94 | 0.74 | 10.37s | 31.5 | 0 | 0 | guardrails-cloud, hf-capability, hf-robustness |
 | 5 | Llama 3.1 8B (lokal) | ollama | 0.81 | - | 0.71 | 0.79 | 0.93 | 21.67s | 12.6 | 4 | 0 | guardrails-local, repeats3 |
-| 6 | Llama 3.3 70B (HF) | hf | 0.73 | - | 0.65 | - | 0.81 | 1.0s | 27.5 | 0 | 0 | hf-capability, hf-robustness |
+| 6 | Llama 3.3 70B (HF) | hf | 0.78 | - | 0.65 | 0.86 | 0.81 | 4.38s | 56.1 | 4 | 1 | guardrails-cloud, hf-capability, hf-robustness |
 | 7 | Qwen2.5 Coder 7B (lokal) | ollama | 0.73 | - | 0.71 | 0.77 | 0.71 | 6.29s | 24.4 | 3 | 0 | guardrails-local, repeats3 |
 | 8 | Mistral 7B Instruct (lokal) | ollama | 0.69 | - | 0.62 | 0.67 | 0.78 | 16.23s | 11.5 | 2 | 0 | guardrails-local, repeats3 |
 
@@ -175,3 +175,5 @@ prompts that have since changed.
 | guardrails-local | 2026-09-13T14:51 | Qwen2.5 Coder 7B (lokal) | 0.77 | guardrails@3226736e49 |
 | guardrails-local | 2026-09-13T14:51 | Qwen3 8B (lokal) | 0.92 | guardrails@3226736e49 |
 | guardrails-local | 2026-09-13T14:51 | Qwythos 9B (lokal, HF GGUF) | 0.85 | guardrails@3226736e49 |
+| guardrails-cloud | 2026-09-13T18:13 | DeepSeek V3 (HF) | 0.94 | guardrails@3226736e49 |
+| guardrails-cloud | 2026-09-13T18:13 | Llama 3.3 70B (HF) | 0.86 | guardrails@3226736e49 |

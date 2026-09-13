@@ -79,3 +79,28 @@ def test_failed_calls_are_missing_data_not_zeros():
 def test_repeats_are_averaged_into_the_score():
     summary = summarize(records({"m/a": [1.0, 0.0]}))
     assert summary["leaderboard"][0]["score"] == 0.5
+
+
+def test_timeout_scales_with_the_token_budget():
+    """A bigger budget without more wall time just turns truncation into timeouts."""
+    from lab.config import LabConfig, ModelSpec, PromptSpec
+    from lab.runner import Task, execute_task
+
+    seen = {}
+
+    class FakeBackend:
+        def complete(self, **kwargs):
+            from lab.backends.base import Completion
+
+            seen.update(kwargs)
+            return Completion(text="ok")
+
+    config = LabConfig(defaults={"max_tokens": 500, "timeout": 100}, models=[], backend_options={}, concurrency={})
+    model = ModelSpec(id="m/a", backend="ollama", model="a", token_budget=6.0)
+    prompt = PromptSpec(id="p", prompt="q", checks=[])
+    task = Task(model=model, suite="s", prompt=prompt, repeat=0)
+
+    record = execute_task(task, FakeBackend(), config, allow_code_exec=False, run_id="r")
+    assert seen["max_tokens"] == 3000
+    assert seen["timeout"] == 600, "six times the tokens needs six times the wall clock"
+    assert record["timeout_s"] == 600

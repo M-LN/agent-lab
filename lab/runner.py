@@ -57,8 +57,12 @@ def execute_task(
     run_id: str,
 ) -> dict[str, Any]:
     defaults = config.defaults
+    budget_factor = max(1.0, task.model.token_budget)
     base_budget = task.prompt.max_tokens or defaults.get("max_tokens", 800)
-    max_tokens = int(base_budget * max(1.0, task.model.token_budget))
+    max_tokens = int(base_budget * budget_factor)
+    # A model given six times the tokens needs the wall time to spend them, or the
+    # larger budget just converts truncated answers into read timeouts.
+    timeout = int(defaults.get("timeout", 120) * budget_factor)
     completion = backend.complete(
         model=task.model.model,
         prompt=task.prompt.prompt,
@@ -67,7 +71,7 @@ def execute_task(
         if task.prompt.temperature is not None
         else defaults.get("temperature", 0.0),
         max_tokens=max_tokens,
-        timeout=defaults.get("timeout", 120),
+        timeout=timeout,
         retries=defaults.get("retries", 2),
         extra={**task.model.params, **task.model.extra},
         history=task.prompt.messages,
@@ -106,6 +110,7 @@ def execute_task(
         "prompt_tokens": completion.prompt_tokens,
         "completion_tokens": completion.completion_tokens,
         "max_tokens": max_tokens,
+        "timeout_s": timeout,
         "truncated": completion.truncated,
         # Which provider the HF router picked affects latency and sometimes output.
         "provider": completion.raw.get("provider"),
