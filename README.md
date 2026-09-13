@@ -7,6 +7,35 @@ checks (ingen LLM-dommer), og resultaterne lander som JSONL + markdown + en selv
 Formatet er lavet så resultaterne senere kan publiceres som en `/lab/`-sektion på
 patterniseverything.com uden at runneren skal laves om.
 
+## Nuværende resultater
+
+**→ [Benchmark board](results/benchmark/board.md)** — samlet stilling, analyse og fuld run-historik.
+Samme side som HTML: [`results/benchmark/board.html`](results/benchmark/board.html)
+(GitHub viser kildekoden — hent filen og åbn den i en browser).
+
+Seneste måling: 5 lokale modeller, 24 prompts, 3 gentagelser hver — 360 svar, 0 fejlede kald.
+
+| Model | Score | capability | robustness |
+|---|---|---|---|
+| Qwen3 8B | **0.90** | 0.92 | 0.89 |
+| Qwythos 9B | **0.90** | 0.92 | 0.89 |
+| Llama 3.1 8B | 0.82 | 0.71 | 0.93 |
+| Qwen2.5 Coder 7B | 0.71 | 0.71 | 0.71 |
+| Mistral 7B | 0.70 | 0.62 | 0.78 |
+
+Tre ting boardet uddyber:
+
+- **Injection-modstand følger ikke modelstørrelse.** Fem af syv testede modeller — inklusive
+  Llama 3.3 70B og DeepSeek V3 — adlød en instruktion skjult i et dokument. De to der afviste
+  den, er en 8B og en 9B der kører lokalt.
+- **Struktur er løst, aritmetik er ikke.** JSON-schema, linjetal og kodekørsel: 100 %.
+  Numeriske checks: 33 %.
+- **Scorerne er stabile.** 118 af 120 prompt-model-par gav identisk score i alle tre
+  gentagelser. De to undtagelser er begge prompts der beder modellen indrømme uvidenhed.
+
+Analysen i `findings.md` er skrevet på engelsk, fordi board-siden er formatet der skal kunne
+løftes direkte ind på sitet.
+
 ## Kom i gang
 
 ```bash
