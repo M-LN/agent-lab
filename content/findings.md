@@ -88,6 +88,12 @@ One model spends most of its output budget reasoning before it answers. Under a 
 out of room mid-sentence — its correct code was scored as a syntax error — and three prompts
 returned empty. A larger budget moved it from 0.76 to 0.90 with nothing about the model changed.
 
+Raising that budget further found the limit of the fix. On six ladder rungs the same model
+consumed its entire allowance and answered nothing, at every budget tried: 11,000 characters of
+reasoning at one cap, 18,600 at triple the cap, zero answer either way. Its reasoning expands to
+fill whatever it is given. That is not a measurement gap to be closed by spending more — it is a
+property of the model, and the honest record is that those rungs cannot be measured at all.
+
 #### An absent answer is not a refusal
 
 The refusal ladder first reported that the uncensored model refused six rungs, including *how
