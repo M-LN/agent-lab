@@ -1,0 +1,117 @@
+"""The benchmark history is the part that outlives individual runs, so it gets tests."""
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from lab import benchmark
+from lab.markdown import render
+
+
+def make_run(tmp_path: Path, run_id: str, scores: dict[str, float], io_hash: str = "aaa") -> Path:
+    run_dir = tmp_path / run_id
+    run_dir.mkdir(parents=True)
+    records = []
+    for model_id, score in scores.items():
+        for prompt_id in ("p1", "p2"):
+            records.append(
+                {
+                    "run_id": run_id,
+                    "suite": "capability",
+                    "prompt_id": prompt_id,
+                    "io_hash": io_hash,
+                    "category": "logic",
+                    "prompt_weight": 1.0,
+                    "repeat": 0,
+                    "model_id": model_id,
+                    "model_label": model_id,
+                    "backend": "ollama",
+                    "model_name": model_id,
+                    "score": score,
+                    "checks": [{"type": "contains", "passed": score > 0.5, "weight": 1.0, "detail": ""}],
+                    "latency_s": 1.0,
+                    "prompt_tokens": 10,
+                    "completion_tokens": 20,
+                    "truncated": False,
+                    "error": None,
+                    "output": "x",
+                    "reasoning_chars": 0,
+                }
+            )
+    (run_dir / "results.jsonl").write_text(
+        "\n".join(json.dumps(r) for r in records), encoding="utf-8"
+    )
+    (run_dir / "meta.json").write_text(
+        json.dumps({"run_id": run_id, "started": f"2026-09-{int(run_id[-1]):02d}T10:00:00+00:00", "repeats": 1}),
+        encoding="utf-8",
+    )
+    return run_dir
+
+
+@pytest.fixture
+def bench(tmp_path, monkeypatch):
+    monkeypatch.setattr(benchmark, "BENCH_DIR", tmp_path / "benchmark")
+    monkeypatch.setattr(benchmark, "HISTORY", tmp_path / "benchmark" / "history.jsonl")
+    return tmp_path
+
+
+def test_append_run_is_idempotent(bench):
+    run = make_run(bench, "run1", {"m/a": 1.0})
+    benchmark.append_run(run)
+    benchmark.append_run(run)
+    history = benchmark.load_history()
+    assert len(history) == 1, "re-adding a run must replace its rows, not duplicate them"
+
+
+def test_board_reports_delta_between_runs(bench):
+    benchmark.append_run(make_run(bench, "run1", {"m/a": 0.5}))
+    benchmark.append_run(make_run(bench, "run2", {"m/a": 0.8}))
+    board = benchmark.current_board()
+    assert len(board) == 1
+    row = board[0]
+    assert row["run_id"] == "run2"
+    assert row["score"] == 0.8
+    assert row["delta"] == pytest.approx(0.3)
+    assert row["previous_run"] == "run1"
+
+
+def test_delta_is_withheld_when_the_prompt_set_changed(bench):
+    benchmark.append_run(make_run(bench, "run1", {"m/a": 0.5}, io_hash="aaa"))
+    benchmark.append_run(make_run(bench, "run2", {"m/a": 0.8}, io_hash="bbb"))
+    row = benchmark.current_board()[0]
+    assert row["delta"] is None, "scores from a changed suite must not be compared"
+
+
+def test_suite_version_hash_tracks_the_prompt_set(bench):
+    run_a = make_run(bench, "run1", {"m/a": 1.0}, io_hash="aaa")
+    run_b = make_run(bench, "run2", {"m/a": 1.0}, io_hash="bbb")
+    from lab.runner import load_records
+
+    version_a = benchmark.suite_versions(load_records(run_a))["capability"]
+    version_b = benchmark.suite_versions(load_records(run_b))["capability"]
+    assert version_a["prompts"] == 2
+    assert version_a["hash"] != version_b["hash"]
+
+
+def test_trend_is_ordered(bench):
+    benchmark.append_run(make_run(bench, "run2", {"m/a": 0.8}))
+    benchmark.append_run(make_run(bench, "run1", {"m/a": 0.5}))
+    rows = benchmark.trend("m/a")
+    assert [r["run_id"] for r in rows] == ["run1", "run2"]
+
+
+def test_markdown_renders_the_pieces_the_board_uses():
+    html = render("# T\n\ntext with **bold**\n\n- a\n- b\n\n| A | B |\n|---|---|\n| 1 | 2 |\n")
+    assert "<h1>T</h1>" in html
+    assert "<strong>bold</strong>" in html
+    assert html.count("<li>") == 2
+    assert "<table>" in html and "<td>1</td>" in html
+
+
+def test_markdown_escapes_html():
+    assert "&lt;script&gt;" in render("a <script> tag")

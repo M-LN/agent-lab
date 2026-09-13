@@ -1,0 +1,88 @@
+# Model registry. "enabled: false" models are skipped unless you pass --include-disabled.
+defaults:
+  temperature: 0.0
+  max_tokens: 800
+  timeout: 180
+  retries: 2
+
+concurrency:
+  ollama: 1      # local GPU/CPU: keep serial so latency numbers stay comparable
+  hf: 4
+
+backends:
+  ollama: {}
+  hf: {}
+
+models:
+  # ---------------------------------------------------------------- local (Ollama)
+  - id: local/qwen3-8b
+    label: Qwen3 8B (lokal)
+    backend: ollama
+    model: qwen3:8b
+    tags: [local, small, reasoning]
+    params:
+      think: false        # otherwise the answer is buried in chain-of-thought
+
+  - id: local/llama3.1-8b
+    label: Llama 3.1 8B (lokal)
+    backend: ollama
+    model: llama3.1:8b
+    tags: [local, small]
+
+  - id: local/mistral-7b
+    label: Mistral 7B Instruct (lokal)
+    backend: ollama
+    model: mistral:7b-instruct
+    tags: [local, small]
+
+  - id: local/qwen2.5-coder-7b
+    label: Qwen2.5 Coder 7B (lokal)
+    backend: ollama
+    model: qwen2.5-coder:7b
+    tags: [local, small, code]
+
+  - id: local/qwythos-9b
+    label: Qwythos 9B (lokal, HF GGUF)
+    backend: ollama
+    model: hf.co/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF:Q4_K_M
+    tags: [local, hf-gguf, reasoning]
+    token_budget: 3.0   # spends most of its budget on internal reasoning
+
+  # ------------------------------------------------- Hugging Face Inference Providers
+  # Enable these once HF_TOKEN is in .env (set enabled: true, or use --include-disabled).
+  - id: hf/llama-3.3-70b
+    label: Llama 3.3 70B (HF)
+    backend: hf
+    model: meta-llama/Llama-3.3-70B-Instruct
+    tags: [api, large]
+    enabled: false
+
+  - id: hf/qwen2.5-72b
+    label: Qwen2.5 72B (HF)
+    backend: hf
+    model: Qwen/Qwen2.5-72B-Instruct
+    tags: [api, large]
+    enabled: false
+
+  - id: hf/deepseek-v3
+    label: DeepSeek V3 (HF)
+    backend: hf
+    model: deepseek-ai/DeepSeek-V3-0324
+    tags: [api, large, reasoning]
+    token_budget: 2.0
+    enabled: false
+
+  - id: hf/mistral-small-24b
+    label: Mistral Small 3.2 24B (HF)
+    backend: hf
+    model: mistralai/Mistral-Small-3.2-24B-Instruct-2506
+    tags: [api, mid]
+    enabled: false
+
+  - id: hf/gpt-oss-120b
+    label: gpt-oss 120B (HF)
+    backend: hf
+    model: openai/gpt-oss-120b
+    tags: [api, large, reasoning]
+    token_budget: 2.5
+    enabled: false
