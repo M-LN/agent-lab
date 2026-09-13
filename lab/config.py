@@ -52,12 +52,17 @@ class PromptSpec:
     temperature: float | None = None
     weight: float = 1.0
     note: str | None = None
+    # An optional prior exchange, so a prompt can test what a model does under
+    # pushback rather than only what it says first.
+    messages: list[dict[str, str]] | None = None
 
     @property
     def fingerprint(self) -> str:
         """Full identity: changing a check changes the fingerprint."""
         payload = json.dumps(
-            {"p": self.prompt, "s": self.system, "c": self.checks}, sort_keys=True, ensure_ascii=False
+            {"p": self.prompt, "s": self.system, "c": self.checks, "h": self.messages},
+            sort_keys=True,
+            ensure_ascii=False,
         )
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:12]
 
@@ -69,7 +74,13 @@ class PromptSpec:
         answer safe to re-grade instead of re-running.
         """
         payload = json.dumps(
-            {"p": self.prompt, "s": self.system, "m": self.max_tokens, "t": self.temperature},
+            {
+                "p": self.prompt,
+                "s": self.system,
+                "m": self.max_tokens,
+                "t": self.temperature,
+                "h": self.messages,
+            },
             sort_keys=True,
             ensure_ascii=False,
         )

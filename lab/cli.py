@@ -14,6 +14,7 @@ from .benchmark import append_run, current_board, load_history, trend, write_boa
 from .config import RESULTS_DIR, available_suites, load_config, load_suite
 from .regrade import regrade_run
 from .report import write_reports
+from .site import write_page
 from .runner import latest_run, load_records, merge_run, run_suites
 
 console = Console()
@@ -274,6 +275,43 @@ def cmd_bench(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_publish(args: argparse.Namespace) -> int:
+    """Refresh everything downstream of the raw results, in dependency order."""
+    runs_dir = RESULTS_DIR / "runs"
+    refreshed = 0
+    skipped: list[str] = []
+    for path in sorted(p for p in runs_dir.iterdir() if p.is_dir() and (p / "results.jsonl").exists()):
+        # meta.json is written last, so its absence means the run is still in flight.
+        if not (path / "meta.json").exists():
+            skipped.append(path.name)
+            continue
+        write_reports(path)
+        refreshed += 1
+    console.print(f"reports regenerated for {refreshed} run(s)")
+    if skipped:
+        console.print(f"  [yellow]skipped (still running):[/yellow] {', '.join(skipped)}")
+
+    # Re-record every run already in the history so the board picks up changed graders.
+    recorded = {row["run_id"] for row in load_history()}
+    for run_id in sorted(recorded):
+        run_dir = runs_dir / run_id
+        if run_dir.exists():
+            append_run(run_dir)
+    paths = write_board()
+    console.print(f"benchmark board: {paths['html']}")
+
+    if not args.no_site:
+        target = write_page(Path(args.site) if args.site else None)
+        console.print(f"site page: {target}")
+        console.print(
+            "\n[dim]To publish, from the site repo:[/dim]\n"
+            f"  git -C \"{target.parent.parent}\" add lab/\n"
+            f"  git -C \"{target.parent.parent}\" commit -m \"Update /lab/ with the latest run\"\n"
+            f"  git -C \"{target.parent.parent}\" push"
+        )
+    return 0
+
+
 def cmd_runs(args: argparse.Namespace) -> int:
     runs_dir = RESULTS_DIR / "runs"
     table = Table(title="Runs", header_style="bold cyan")
@@ -323,6 +361,11 @@ def build_parser() -> argparse.ArgumentParser:
     regrade.add_argument("--out", help="target run id (default: <run>-regraded)")
     regrade.add_argument("--allow-code-exec", action="store_true")
     regrade.set_defaults(func=cmd_regrade)
+
+    publish = sub.add_parser("publish", help="refresh reports, board and the site page from the recorded runs")
+    publish.add_argument("--site", help="path to the site's lab/index.html")
+    publish.add_argument("--no-site", action="store_true", help="skip regenerating the site page")
+    publish.set_defaults(func=cmd_publish)
 
     bench = sub.add_parser("bench", help="the benchmark history that survives individual runs")
     bench_sub = bench.add_subparsers(dest="bench_command")

@@ -1,6 +1,6 @@
 # Agent Lab benchmark board
 
-8 model(s) tracked across 4 run(s) - updated 2026-09-13T15:50:59
+8 model(s) tracked across 4 run(s) - updated 2026-09-13T16:26:46
 
 ## What 24 fixed prompts reveal about five local models
 

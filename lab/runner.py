@@ -69,6 +69,7 @@ def execute_task(
         timeout=defaults.get("timeout", 120),
         retries=defaults.get("retries", 2),
         extra={**task.model.params, **task.model.extra},
+        history=task.prompt.messages,
     )
 
     if completion.ok:
@@ -94,6 +95,9 @@ def execute_task(
         "passed_checks": sum(1 for c in checks if c["passed"]),
         "total_checks": len(checks),
         "checks": checks,
+        # Measured quantities (refusal, hedging density, length) kept separate from
+        # pass/fail: this is what a behavioural pattern gets plotted from.
+        "metrics": {c["metric"]: c["value"] for c in checks if "value" in c},
         "latency_s": completion.latency_s,
         "prompt_tokens": completion.prompt_tokens,
         "completion_tokens": completion.completion_tokens,

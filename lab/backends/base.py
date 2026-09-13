@@ -58,10 +58,12 @@ class Backend:
         timeout: int = 120,
         retries: int = 2,
         extra: dict[str, Any] | None = None,
+        history: list[dict[str, str]] | None = None,
     ) -> Completion:
         messages: list[dict[str, str]] = []
         if system:
             messages.append({"role": "system", "content": system})
+        messages.extend(history or [])
         messages.append({"role": "user", "content": prompt})
 
         last_error = "unknown error"

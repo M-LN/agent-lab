@@ -28,6 +28,8 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
     per_prompt: dict[tuple[str, str], list[float]] = defaultdict(list)
     matrix: dict[tuple[str, str], list[float]] = defaultdict(list)
     check_stats: dict[str, list[int]] = defaultdict(list)
+    per_model_metrics: dict[tuple[str, str], list[float]] = defaultdict(list)
+    per_cat_metrics: dict[tuple[str, str, str], list[float]] = defaultdict(list)
     prompt_meta: dict[str, dict[str, str]] = {}
 
     for rec in records:
@@ -66,6 +68,9 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
 
         for check in rec.get("checks", []):
             check_stats[check["type"]].append(1 if check["passed"] else 0)
+        for name, value in (rec.get("metrics") or {}).items():
+            per_model_metrics[(mid, name)].append(float(value))
+            per_cat_metrics[(mid, rec["category"], name)].append(float(value))
 
     suites = sorted({r["suite"] for r in records})
     categories = sorted({r["category"] for r in records})
@@ -84,6 +89,16 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
                 "tokens_per_s": round(_mean(per_model_tps[mid]), 1) if per_model_tps[mid] else None,
                 "errors": per_model_errors[mid],
                 "truncated": per_model_truncated[mid],
+                "metrics": {
+                    name: _mean(values)
+                    for (model_id, name), values in per_model_metrics.items()
+                    if model_id == mid
+                },
+                "metrics_by_category": {
+                    f"{category}/{name}": _mean(values)
+                    for (model_id, category, name), values in per_cat_metrics.items()
+                    if model_id == mid
+                },
                 "runs": len([r for r in records if r["model_id"] == mid]),
             }
         )
@@ -143,6 +158,7 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
             name: {"pass_rate": _mean([float(v) for v in vals]), "n": len(vals)}
             for name, vals in sorted(check_stats.items())
         },
+        "metrics": sorted({name for _, name in per_model_metrics}),
         "samples_per_prompt": samples_per_cell,
         "unstable": unstable,
         "total_records": len(records),
