@@ -1,9 +1,10 @@
 # Agent Lab benchmark board
 
-8 model(s) tracked across 5 run(s) - updated 2026-09-13T19:46:58
+8 model(s) tracked across 5 run(s) - updated 2026-09-13T19:55:10
 
-# What 36 fixed prompts reveal about 8 language models
+# The Model Lab
 
+**What 36 fixed prompts reveal about 8 language models.**
 Every model here ran the same prompts at temperature 0 with a fixed seed, through the same code
 path and the same graders. No LLM judged another LLM: each answer is scored by deterministic
 checks — exact strings, regular expressions, JSON Schema validation, word and line counts, and

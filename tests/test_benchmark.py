@@ -191,3 +191,16 @@ def test_measurement_only_runs_are_not_recorded(bench):
     added, excluded = benchmark.append_run(run)
     assert added == 0 and excluded == []
     assert benchmark.load_history() == []
+
+
+def test_html_blocks_pass_through_unescaped():
+    """Generated tables are substituted into the narrative as markup, not text."""
+    table = '<div class="lab-scroll"><table class="lab-table"><tr><td>1</td></tr></table></div>'
+    out = render(f"Intro line.\n\n{table}\n\nAfter.\n")
+    assert table in out, "an HTML block must survive rendering intact"
+    assert "&lt;div" not in out
+    assert "<p>Intro line.</p>" in out
+
+
+def test_angle_brackets_in_prose_are_still_escaped():
+    assert "&lt;script&gt;" in render("Prose mentioning a <script> tag inline.")

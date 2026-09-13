@@ -1,5 +1,6 @@
-# What {{prompt_count}} fixed prompts reveal about {{model_count}} language models
+# The Model Lab
 
+**What {{prompt_count}} fixed prompts reveal about {{model_count}} language models.**
 Every model here ran the same prompts at temperature 0 with a fixed seed, through the same code
 path and the same graders. No LLM judged another LLM: each answer is scored by deterministic
 checks — exact strings, regular expressions, JSON Schema validation, word and line counts, and

@@ -52,6 +52,19 @@ def render(markdown: str) -> str:
             i += 1
             continue
 
+        # A line that is already HTML passes through untouched. Generated tables and
+        # figures are substituted into the narrative as markup, and escaping them
+        # would turn a table into a paragraph of angle brackets.
+        if stripped.startswith("<") and not stripped.startswith("<-"):
+            close_list()
+            block = [lines[i]]
+            i += 1
+            while i < len(lines) and lines[i].strip():
+                block.append(lines[i])
+                i += 1
+            out.append("\n".join(block))
+            continue
+
         # Table: header row followed by a divider row.
         if stripped.startswith("|") and i + 1 < len(lines) and _is_table_divider(lines[i + 1]):
             close_list()

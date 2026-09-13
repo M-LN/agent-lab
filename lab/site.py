@@ -278,16 +278,46 @@ def narrative_values(history: list[dict] | None = None) -> dict:
 
 def build(out_path: Path) -> str:
     values = narrative_values()
-    body = markdown_render(
-        content.render(content.load(), values, drop={"table:history"})
-    )
-    # The site turns the "#### heading + paragraph" pairs into its own boxed callouts.
+    markdown = content.render(content.load(), values, drop={"table:history"})
+
+    # The narrative's title becomes the site's topic header, not an h1 in the body.
+    title = "The Model Lab"
+    lines = markdown.splitlines()
+    if lines and lines[0].startswith("# "):
+        title = lines[0][2:].strip()
+        markdown = "\n".join(lines[1:]).lstrip("\n")
+
+    body = markdown_render(markdown)
+    # Map the narrative's own conventions onto the site's components: a level-4
+    # heading with its paragraph is a formula box, a blockquote is a callout.
     body = re.sub(
         r"<h4>(.*?)</h4>\s*<p>(.*?)</p>",
-        r'<div class="fb"><div class="fm"></div><div class="fd"></div></div>',
+        lambda m: (
+            '<div class="fb">'
+            f'<div class="fm">{m.group(1)}</div>'
+            f'<div class="fd">{m.group(2)}</div></div>'
+        ),
         body,
         flags=re.DOTALL,
     )
+    body = re.sub(
+        r"<blockquote>(.*?)</blockquote>",
+        lambda m: f'<div class="callout">{m.group(1)}</div>',
+        body,
+        flags=re.DOTALL,
+    )
+
+    badge = f'{values["model_count"]} models · {values["prompt_count"]} prompts · deterministic checks'
+    header = (
+        '<div class="topic-header"><div class="topic-meta">'
+        '<div class="topic-num">Lab — Measurement</div>'
+        f'<h2><em>{escape(title)}</em></h2></div>'
+        f'<span class="topic-badge">{badge}</span></div>'
+        '<div class="pattern-thread"><span class="pt-label">◆ The Pattern</span>'
+        '<span class="pt-text">What you measure is never quite what you meant to '
+        'measure</span></div>'
+    )
+    body = f'<div class="topic" id="model-lab">{header}{body}</div>'
     chart_data = values["chart_data"]
 
     page = f"""<!DOCTYPE html>
