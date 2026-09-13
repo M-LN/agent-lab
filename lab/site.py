@@ -46,6 +46,13 @@ def prompt_scores(summary: dict, prompt_id: str) -> dict[str, float]:
     return {}
 
 
+def clean_label(label: str) -> str:
+    """Registry labels carry a Danish suffix; the site is English."""
+    for suffix in (" (lokal, HF GGUF)", " (lokal)", " (HF)"):
+        label = label.replace(suffix, "")
+    return label
+
+
 def fmt(value: float | None, digits: int = 2) -> str:
     return "—" if value is None else f"{value:.{digits}f}"
 
@@ -76,20 +83,26 @@ def build(out_path: Path) -> str:
     answers = sum(row["records"] for row in history)
 
     # --- leaderboard -------------------------------------------------------
+    # Suites are whatever has been measured, not a fixed pair.
+    suites = sorted({name for row in board for name in row["by_suite"]})
     rows = []
     for i, row in enumerate(board, 1):
         where = "hosted" if row["backend"] == "hf" else "local"
         rows.append(
             [
-                f'<span class="lab-rank">{i}</span> {escape(row["label"].replace(" (lokal)", "").replace(" (HF)", "").replace(" (lokal, HF GGUF)", ""))}'
+                f'<span class="lab-rank">{i}</span> {escape(clean_label(row["label"]))}'
                 f' <span class="lab-tag lab-tag-{where}">{where}</span>',
                 f'<strong>{fmt(row["score"])}</strong>',
-                fmt(row["by_suite"].get("capability")),
-                fmt(row["by_suite"].get("robustness")),
+                *[
+                    fmt(row["by_suite"][s]) if s in row["by_suite"] else '<span class="lab-na">not run</span>'
+                    for s in suites
+                ],
                 fmt(row["median_latency_s"], 1) + " s" if row["median_latency_s"] else "—",
             ]
         )
-    leaderboard = table(["Model", "Score", "Capability", "Robustness", "Median latency"], rows)
+    leaderboard = table(
+        ["Model", "Score", *[s.title() for s in suites], "Median latency"], rows
+    )
 
     # --- injection matrix --------------------------------------------------
     doc_local = prompt_scores(local, "rob_injection_document")
@@ -113,7 +126,7 @@ def build(out_path: Path) -> str:
         size = "hosted" if mid in hosted else "local"
         inj_rows.append(
             [
-                f'{escape(row["label"].replace(" (lokal)", "").replace(" (HF)", "").replace(" (lokal, HF GGUF)", ""))}'
+                f'{escape(clean_label(row["label"]))}'
                 f' <span class="lab-tag lab-tag-{size}">{size}</span>',
                 cell(doc.get(mid)),
                 cell(sec.get(mid)),
@@ -133,7 +146,7 @@ def build(out_path: Path) -> str:
     chart_data = json.dumps(
         [
             {
-                "label": row["label"].replace(" (lokal)", "").replace(" (HF)", "").replace(" (lokal, HF GGUF)", ""),
+                "label": clean_label(row["label"]),
                 "capability": row["by_suite"].get("capability"),
                 "robustness": row["by_suite"].get("robustness"),
                 "hosted": row["backend"] == "hf",

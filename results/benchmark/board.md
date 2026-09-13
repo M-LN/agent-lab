@@ -1,6 +1,6 @@
 # Agent Lab benchmark board
 
-8 model(s) tracked across 4 run(s) - updated 2026-09-13T16:26:46
+8 model(s) tracked across 5 run(s) - updated 2026-09-13T16:52:34
 
 ## What 24 fixed prompts reveal about five local models
 
@@ -152,16 +152,16 @@ wrong rather than the models.
 
 ## Current standings
 
-| # | Model | Backend | Score | Delta | capability | robustness | Latency | tok/s | Trunc | Errors | Last run |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | Qwen3 8B (lokal) | ollama | 0.90 | - | 0.92 | 0.89 | 4.93s | 5.7 | 0 | 0 | repeats3 |
-| 2 | Qwythos 9B (lokal, HF GGUF) | ollama | 0.90 | - | 0.92 | 0.89 | 19.03s | 14.3 | 3 | 0 | repeats3 |
-| 3 | Qwen2.5 72B (HF) | hf | 0.89 | - | 0.90 | 0.88 | 2.8s | 8.1 | 0 | 1 | hf-capability, hf-robustness |
-| 4 | Llama 3.1 8B (lokal) | ollama | 0.82 | - | 0.71 | 0.93 | 4.17s | 7.3 | 0 | 0 | repeats3 |
-| 5 | DeepSeek V3 (HF) | hf | 0.82 | - | 0.90 | 0.74 | 1.45s | 19.0 | 0 | 0 | hf-capability, hf-robustness |
-| 6 | Llama 3.3 70B (HF) | hf | 0.73 | - | 0.65 | 0.81 | 1.0s | 27.5 | 0 | 0 | hf-capability, hf-robustness |
-| 7 | Qwen2.5 Coder 7B (lokal) | ollama | 0.71 | - | 0.71 | 0.71 | 2.55s | 10.7 | 0 | 0 | repeats3 |
-| 8 | Mistral 7B Instruct (lokal) | ollama | 0.70 | - | 0.62 | 0.78 | 3.72s | 8.3 | 0 | 0 | repeats3 |
+| # | Model | Backend | Score | Delta | capability | guardrails | robustness | Latency | tok/s | Trunc | Errors | Last run |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | Qwen3 8B (lokal) | ollama | 0.91 | - | 0.92 | 0.92 | 0.89 | 37.38s | 8.1 | 5 | 0 | guardrails-local, repeats3 |
+| 2 | Qwen2.5 72B (HF) | hf | 0.89 | - | 0.90 | - | 0.88 | 2.8s | 8.1 | 0 | 1 | hf-capability, hf-robustness |
+| 3 | Qwythos 9B (lokal, HF GGUF) | ollama | 0.89 | - | 0.92 | 0.85 | 0.89 | 35.45s | 14.0 | 3 | 0 | guardrails-local, repeats3 |
+| 4 | DeepSeek V3 (HF) | hf | 0.82 | - | 0.90 | - | 0.74 | 1.45s | 19.0 | 0 | 0 | hf-capability, hf-robustness |
+| 5 | Llama 3.1 8B (lokal) | ollama | 0.81 | - | 0.71 | 0.79 | 0.93 | 21.67s | 12.6 | 4 | 0 | guardrails-local, repeats3 |
+| 6 | Llama 3.3 70B (HF) | hf | 0.73 | - | 0.65 | - | 0.81 | 1.0s | 27.5 | 0 | 0 | hf-capability, hf-robustness |
+| 7 | Qwen2.5 Coder 7B (lokal) | ollama | 0.73 | - | 0.71 | 0.77 | 0.71 | 6.29s | 24.4 | 3 | 0 | guardrails-local, repeats3 |
+| 8 | Mistral 7B Instruct (lokal) | ollama | 0.69 | - | 0.62 | 0.67 | 0.78 | 16.23s | 11.5 | 2 | 0 | guardrails-local, repeats3 |
 
 ## History
 
@@ -183,3 +183,8 @@ wrong rather than the models.
 | hf-robustness | 2026-09-13T12:10 | DeepSeek V3 (HF) | 0.74 | robustness@522ba4a0ad |
 | hf-robustness | 2026-09-13T12:10 | Llama 3.3 70B (HF) | 0.81 | robustness@522ba4a0ad |
 | hf-robustness | 2026-09-13T12:10 | Qwen2.5 72B (HF) | 0.88 | robustness@522ba4a0ad |
+| guardrails-local | 2026-09-13T14:51 | Llama 3.1 8B (lokal) | 0.79 | guardrails@3226736e49 |
+| guardrails-local | 2026-09-13T14:51 | Mistral 7B Instruct (lokal) | 0.67 | guardrails@3226736e49 |
+| guardrails-local | 2026-09-13T14:51 | Qwen2.5 Coder 7B (lokal) | 0.77 | guardrails@3226736e49 |
+| guardrails-local | 2026-09-13T14:51 | Qwen3 8B (lokal) | 0.92 | guardrails@3226736e49 |
+| guardrails-local | 2026-09-13T14:51 | Qwythos 9B (lokal, HF GGUF) | 0.85 | guardrails@3226736e49 |
