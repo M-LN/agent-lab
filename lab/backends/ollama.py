@@ -16,11 +16,13 @@ class OllamaBackend(Backend):
         super().__init__(**options)
         self.host = (host or os.getenv("OLLAMA_HOST") or "http://localhost:11434").rstrip("/")
 
-    def available(self) -> tuple[bool, str]:
+    def available(self, model: str | None = None) -> tuple[bool, str]:
         try:
             response = requests.get(f"{self.host}/api/tags", timeout=5)
             response.raise_for_status()
             names = [m["name"] for m in response.json().get("models", [])]
+            if model and model not in names:
+                return False, f"model not pulled: {model} (ollama pull {model})"
             return True, f"{len(names)} model(s) pulled"
         except Exception as exc:  # noqa: BLE001
             return False, f"unreachable: {exc}"

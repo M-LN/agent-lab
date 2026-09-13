@@ -43,8 +43,8 @@ class Backend:
     def __init__(self, **options: Any) -> None:
         self.options = options
 
-    def available(self) -> tuple[bool, str]:
-        """Cheap reachability/credential probe."""
+    def available(self, model: str | None = None) -> tuple[bool, str]:
+        """Readiness probe. Should fail the way a real call would fail."""
         return True, "ok"
 
     def complete(
@@ -86,7 +86,10 @@ class Backend:
             except Exception as exc:  # noqa: BLE001 - every backend failure is a datapoint
                 last_error = f"{type(exc).__name__}: {exc}"
                 if attempt < retries:
-                    time.sleep(1.5 * (attempt + 1))
+                    # A quota or rate-limit refusal needs a real pause, not the
+                    # couple of seconds that suit a transient network error.
+                    throttled = any(code in last_error for code in ("HTTP 402", "HTTP 429"))
+                    time.sleep((20.0 if throttled else 1.5) * (attempt + 1))
 
         return Completion(error=last_error, latency_s=0.0)
 

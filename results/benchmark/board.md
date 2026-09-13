@@ -1,6 +1,6 @@
 # Agent Lab benchmark board
 
-5 model(s) tracked across 2 run(s) - updated 2026-09-13T13:41:19
+8 model(s) tracked across 3 run(s) - updated 2026-09-13T14:04:33
 
 ## What 24 fixed prompts reveal about five local models
 
@@ -140,9 +140,12 @@ wrong rather than the models.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | 1 | Qwen3 8B (lokal) | ollama | 0.90 | - | 0.92 | 0.89 | 4.93s | 5.7 | 0 | 0 | repeats3 |
 | 2 | Qwythos 9B (lokal, HF GGUF) | ollama | 0.90 | - | 0.92 | 0.89 | 19.03s | 14.3 | 3 | 0 | repeats3 |
-| 3 | Llama 3.1 8B (lokal) | ollama | 0.82 | - | 0.71 | 0.93 | 4.17s | 7.3 | 0 | 0 | repeats3 |
-| 4 | Qwen2.5 Coder 7B (lokal) | ollama | 0.71 | - | 0.71 | 0.71 | 2.55s | 10.7 | 0 | 0 | repeats3 |
-| 5 | Mistral 7B Instruct (lokal) | ollama | 0.70 | - | 0.62 | 0.78 | 3.72s | 8.3 | 0 | 0 | repeats3 |
+| 3 | DeepSeek V3 (HF) | hf | 0.90 | - | 0.90 | - | 3.89s | 24.3 | 0 | 0 | hf-capability |
+| 4 | Qwen2.5 72B (HF) | hf | 0.90 | - | 0.90 | - | 4.2s | 7.9 | 0 | 0 | hf-capability |
+| 5 | Llama 3.1 8B (lokal) | ollama | 0.82 | - | 0.71 | 0.93 | 4.17s | 7.3 | 0 | 0 | repeats3 |
+| 6 | Qwen2.5 Coder 7B (lokal) | ollama | 0.71 | - | 0.71 | 0.71 | 2.55s | 10.7 | 0 | 0 | repeats3 |
+| 7 | Mistral 7B Instruct (lokal) | ollama | 0.70 | - | 0.62 | 0.78 | 3.72s | 8.3 | 0 | 0 | repeats3 |
+| 8 | Llama 3.3 70B (HF) | hf | 0.65 | - | 0.65 | - | 1.16s | 37.7 | 0 | 0 | hf-capability |
 
 ## History
 
@@ -158,3 +161,6 @@ wrong rather than the models.
 | repeats3 | 2026-09-13T08:41 | Qwen2.5 Coder 7B (lokal) | 0.71 | capability@1454e1484e, robustness@522ba4a0ad |
 | repeats3 | 2026-09-13T08:41 | Qwen3 8B (lokal) | 0.90 | capability@1454e1484e, robustness@522ba4a0ad |
 | repeats3 | 2026-09-13T08:41 | Qwythos 9B (lokal, HF GGUF) | 0.90 | capability@1454e1484e, robustness@522ba4a0ad |
+| hf-capability | 2026-09-13T12:03 | DeepSeek V3 (HF) | 0.90 | capability@1454e1484e |
+| hf-capability | 2026-09-13T12:03 | Llama 3.3 70B (HF) | 0.65 | capability@1454e1484e |
+| hf-capability | 2026-09-13T12:03 | Qwen2.5 72B (HF) | 0.90 | capability@1454e1484e |

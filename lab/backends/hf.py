@@ -19,19 +19,39 @@ class HFBackend(Backend):
         self.base_url = (base_url or os.getenv("HF_BASE_URL") or DEFAULT_ROUTER).rstrip("/")
         self.token = token or os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACEHUB_API_TOKEN")
 
-    def available(self) -> tuple[bool, str]:
+    def available(self, model: str | None = None) -> tuple[bool, str]:
+        """Probe with a real generation, not just a reachability check.
+
+        Listing models succeeds on an account with no credits left, and so does a
+        1-token completion - both report green while every real call returns 402.
+        The probe therefore asks for enough tokens to be billed like the run itself.
+        """
         if not self.token:
             return False, "no HF_TOKEN in environment or .env"
+        headers = {"Authorization": f"Bearer {self.token}", "Content-Type": "application/json"}
         try:
-            response = requests.get(
-                f"{self.base_url}/models",
-                headers={"Authorization": f"Bearer {self.token}"},
-                timeout=10,
-            )
-            if response.status_code == 401:
+            listing = requests.get(f"{self.base_url}/models", headers=headers, timeout=10)
+            if listing.status_code == 401:
                 return False, "HF_TOKEN rejected (401)"
-            response.raise_for_status()
-            return True, "router reachable"
+            listing.raise_for_status()
+
+            probe = requests.post(
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json={
+                    "model": model or "meta-llama/Llama-3.3-70B-Instruct",
+                    "messages": [{"role": "user", "content": "Reply with the word ok."}],
+                    "max_tokens": 64,
+                },
+                timeout=30,
+            )
+            if probe.status_code == 402:
+                return False, "no credits left (HTTP 402) - a run would fail call by call"
+            if probe.status_code == 404:
+                return False, f"model not served by the router: {model}"
+            if probe.status_code >= 400:
+                return False, f"probe failed HTTP {probe.status_code}: {probe.text[:120]}"
+            return True, "router reachable, credits available"
         except Exception as exc:  # noqa: BLE001
             return False, f"unreachable: {exc}"
 

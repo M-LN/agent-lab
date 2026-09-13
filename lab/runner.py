@@ -134,12 +134,26 @@ def run_suites(
     ]
 
     backends = build_backends(config, models)
+    # Preflight per backend, probing with a model this run actually uses. A backend
+    # that cannot serve is skipped entirely rather than failing call by call.
+    blocked: set[str] = set()
     for name, backend in backends.items():
-        ok, detail = backend.available()
+        probe_model = next((m.model for m in models if m.backend == name), None)
+        ok, detail = backend.available(probe_model)
         style = "green" if ok else "red"
         console.print(f"  backend [bold]{name}[/bold]: [{style}]{detail}[/{style}]")
         if not ok:
-            console.print(f"  [yellow]-> results for {name} models will be recorded as errors[/yellow]")
+            blocked.add(name)
+
+    if blocked:
+        skipped = [m.id for m in models if m.backend in blocked]
+        console.print(f"  [yellow]skipping {len(skipped)} model(s) on unavailable backend(s):[/yellow] "
+                      + ", ".join(skipped))
+        models = [m for m in models if m.backend not in blocked]
+        tasks = [t for t in tasks if t.model.backend not in blocked]
+        if not tasks:
+            console.print("[red]Nothing left to run.[/red]")
+            raise SystemExit(2)
 
     write_lock = threading.Lock()
     records: list[dict[str, Any]] = []

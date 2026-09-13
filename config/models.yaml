@@ -7,7 +7,7 @@ defaults:
 
 concurrency:
   ollama: 1      # local GPU/CPU: keep serial so latency numbers stay comparable
-  hf: 4
+  hf: 2        # bursts trip the router's quota limiter; pace the calls
 
 backends:
   ollama: {}

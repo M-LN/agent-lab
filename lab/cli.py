@@ -125,7 +125,7 @@ def _print_leaderboard(run_dir: Path) -> None:
         table.add_row(
             str(i),
             row["label"],
-            *[f"{row['by_suite'].get(s, 0):.2f}" for s in summary["suites"]],
+            *[f"{row['by_suite'][s]:.2f}" if s in row["by_suite"] else "[dim]not run[/dim]" for s in summary["suites"]],
             f"[bold]{row['score']:.2f}[/bold]",
             f"{row['median_latency_s']}s" if row["median_latency_s"] is not None else "-",
             str(row["errors"]),
@@ -262,7 +262,7 @@ def cmd_bench(args: argparse.Namespace) -> int:
         table.add_row(
             str(i),
             row["label"],
-            *[f"{row['by_suite'].get(s, 0):.2f}" for s in suites],
+            *[f"{row['by_suite'][s]:.2f}" if s in row["by_suite"] else "[dim]not run[/dim]" for s in suites],
             f"[bold]{row['score']:.2f}[/bold]",
             delta_text,
             str(row["truncated"]),
