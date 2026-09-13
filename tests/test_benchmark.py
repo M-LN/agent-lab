@@ -149,3 +149,31 @@ def test_consecutive_quote_lines_become_one_blockquote():
 
 def test_markdown_escapes_html():
     assert "&lt;script&gt;" in render("a <script> tag")
+
+
+def test_board_keeps_suites_measured_in_separate_runs(bench, monkeypatch):
+    """A model measured one suite at a time must not lose the earlier suite."""
+    run_a = make_run(bench, "run1", {"m/a": 1.0})
+    run_b = make_run(bench, "run2", {"m/a": 0.5})
+    # Relabel the second run's records as a different suite.
+    path = run_b / "results.jsonl"
+    records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    for record in records:
+        record["suite"] = "robustness"
+    path.write_text("\n".join(json.dumps(r) for r in records), encoding="utf-8")
+
+    benchmark.append_run(run_a)
+    benchmark.append_run(run_b)
+    row = benchmark.current_board()[0]
+
+    assert row["by_suite"] == {"capability": 1.0, "robustness": 0.5}
+    assert row["score"] == 0.75
+    assert row["run_id"] == "run1, run2"
+
+
+def test_rerunning_one_suite_replaces_only_that_suite(bench):
+    benchmark.append_run(make_run(bench, "run1", {"m/a": 1.0}))
+    benchmark.append_run(make_run(bench, "run2", {"m/a": 0.25}))
+    row = benchmark.current_board()[0]
+    assert row["by_suite"] == {"capability": 0.25}, "the newer measurement of a suite wins"
+    assert row["delta"] == pytest.approx(-0.75)

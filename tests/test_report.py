@@ -63,6 +63,19 @@ def test_single_sample_run_reports_no_stability_section():
     assert "Stabilitet" not in to_html(summary, {"run_id": "t", "repeats": 1})
 
 
+def test_failed_calls_are_missing_data_not_zeros():
+    recs = records({"m/a": [1.0, 1.0]}, prompt_id="p1")
+    recs[1].update({"error": "RuntimeError: HTTP 402", "score": 0.0, "output": ""})
+    summary = summarize(recs)
+    row = summary["leaderboard"][0]
+
+    assert row["score"] == 1.0, "a rate-limited call must not read as a capability failure"
+    assert row["errors"] == 1
+    assert summary["prompts"][0]["scores"]["m/a"] == 1.0
+    # The failed call must not count as a disagreeing repeat either.
+    assert summary["unstable"] == []
+
+
 def test_repeats_are_averaged_into_the_score():
     summary = summarize(records({"m/a": [1.0, 0.0]}))
     assert summary["leaderboard"][0]["score"] == 0.5

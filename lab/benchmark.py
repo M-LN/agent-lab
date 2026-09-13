@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import statistics
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -101,28 +102,58 @@ def append_run(run_dir: Path, max_error_share: float = 0.1) -> tuple[int, list[d
     return len(keep), excluded
 
 
+def _composite(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Newest measurement of each suite, combined.
+
+    A model is often measured one suite at a time - a cloud run split in two, or a
+    single suite rerun. Taking only the newest row would throw away every suite
+    that run did not cover.
+    """
+    by_suite: dict[str, float] = {}
+    suite_runs: dict[str, str] = {}
+    versions: dict[str, Any] = {}
+    for row in rows:  # oldest first, so later measurements win
+        for suite, score in row["by_suite"].items():
+            by_suite[suite] = score
+            suite_runs[suite] = row["run_id"]
+            if suite in row.get("suite_versions", {}):
+                versions[suite] = row["suite_versions"][suite]
+    score = round(statistics.fmean(by_suite.values()), 4) if by_suite else 0.0
+    return {"by_suite": by_suite, "suite_runs": suite_runs, "suite_versions": versions, "score": score}
+
+
 def current_board(history: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
-    """Latest row per model, with the delta against that model's previous run."""
+    """One entry per model: the newest measurement of each suite, plus the delta."""
     history = history if history is not None else load_history()
     by_model: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in history:
         by_model[row["model_id"]].append(row)
 
     board: list[dict[str, Any]] = []
-    for model_id, rows in by_model.items():
+    for rows in by_model.values():
         rows.sort(key=lambda r: (r["recorded"], r["run_id"]))
-        latest = dict(rows[-1])
-        comparable = [
-            r
-            for r in rows[:-1]
-            if r["suite_versions"] == latest["suite_versions"] and r["run_id"] != latest["run_id"]
-        ]
-        previous = comparable[-1] if comparable else None
-        latest["previous_score"] = previous["score"] if previous else None
-        latest["previous_run"] = previous["run_id"] if previous else None
-        latest["delta"] = round(latest["score"] - previous["score"], 4) if previous else None
-        latest["appearances"] = len(rows)
-        board.append(latest)
+        current = _composite(rows)
+        entry = dict(rows[-1])
+        entry.update(current)
+
+        contributing = set(current["suite_runs"].values())
+        entry["run_id"] = ", ".join(sorted(contributing))
+        entry["errors"] = sum(r["errors"] for r in rows if r["run_id"] in contributing)
+        entry["truncated"] = sum(r["truncated"] for r in rows if r["run_id"] in contributing)
+
+        # A delta only means something against the same suites at the same version.
+        prior_rows = [r for r in rows if r["run_id"] != rows[-1]["run_id"]]
+        prior = _composite(prior_rows) if prior_rows else None
+        comparable = (
+            prior is not None
+            and set(prior["by_suite"]) == set(current["by_suite"])
+            and prior["suite_versions"] == current["suite_versions"]
+        )
+        entry["previous_score"] = prior["score"] if comparable else None
+        entry["previous_run"] = prior_rows[-1]["run_id"] if comparable else None
+        entry["delta"] = round(current["score"] - prior["score"], 4) if comparable else None
+        entry["appearances"] = len(rows)
+        board.append(entry)
 
     board.sort(key=lambda r: r["score"], reverse=True)
     return board

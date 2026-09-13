@@ -41,6 +41,16 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
                 "model_name": rec["model_name"],
             },
         )
+        prompt_meta[rec["prompt_id"]] = {"suite": rec["suite"], "category": rec["category"]}
+        if rec.get("truncated"):
+            per_model_truncated[mid] += 1
+
+        if rec.get("error"):
+            # A call that never happened is missing data, not a zero. Counting it as
+            # a score makes a rate limit look exactly like a capability failure.
+            per_model_errors[mid] += 1
+            continue
+
         weight = float(rec.get("prompt_weight", 1.0) or 1.0)
         score = float(rec["score"])
         per_model_scores[mid].extend([score] * max(1, int(weight)))
@@ -48,17 +58,11 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
         per_model_cat[(mid, rec["category"])].append(score)
         per_prompt[(rec["suite"], rec["prompt_id"])].append(score)
         matrix[(rec["prompt_id"], mid)].append(score)
-        prompt_meta[rec["prompt_id"]] = {"suite": rec["suite"], "category": rec["category"]}
 
-        if rec.get("truncated"):
-            per_model_truncated[mid] += 1
-        if rec.get("error"):
-            per_model_errors[mid] += 1
-        else:
-            per_model_latency[mid].append(float(rec["latency_s"]))
-            out_tokens = rec.get("completion_tokens")
-            if out_tokens and rec["latency_s"] > 0:
-                per_model_tps[mid].append(out_tokens / rec["latency_s"])
+        per_model_latency[mid].append(float(rec["latency_s"]))
+        out_tokens = rec.get("completion_tokens")
+        if out_tokens and rec["latency_s"] > 0:
+            per_model_tps[mid].append(out_tokens / rec["latency_s"])
 
         for check in rec.get("checks", []):
             check_stats[check["type"]].append(1 if check["passed"] else 0)
