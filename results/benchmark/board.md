@@ -1,6 +1,6 @@
 # Agent Lab benchmark board
 
-5 model(s) tracked across 1 run(s) - updated 2026-09-13T08:04:38
+5 model(s) tracked across 2 run(s) - updated 2026-09-13T10:42:22
 
 ## What 24 fixed prompts reveal about five local models
 
@@ -76,14 +76,32 @@ category: it answered the invented theorem as though it were real. Between a mod
 "that is not in the table" and one that produces a plausible number, the score gap is small
 but the operational difference is total.
 
+### These are stable measurements, not lucky samples
+
+Every prompt was then run three times per model — 360 answers, zero failed calls. In 118 of
+the 120 prompt-model pairs, all three repeats scored **identically**. Aggregate scores moved
+by at most 0.01 against the single-sample baseline, so the ranking above is not an artefact
+of sampling.
+
+Two pairs disagreed, and both sit in the same place:
+
+- Llama 3.1 on the missing-table-value question: 0.60, 1.00, 1.00
+- Mistral 7B on the invented theorem: 0.25, 0.00, 0.00
+
+Both are *admitting ignorance* prompts. Everything these models do — arithmetic, JSON,
+formatting, code, resisting injection — they do the same way every time at temperature 0.
+The one thing they waver on is whether to say "I don't know". That is worth knowing before
+trusting one to abstain reliably.
+
+Qwythos truncated on exactly the same prompt in all three repeats, which makes its remaining
+budget failure a reproducible property rather than a fluke.
+
 ### How to read the scores
 
 A score is not an accuracy percentage. It is the weighted share of deterministic checks an
-answer passed, over this specific prompt set, at temperature 0, with one sample per prompt.
-A single run cannot separate a stable weakness from an unlucky sample — repeat runs are what
-make that distinction, and every run is recorded below with the version hash of the prompt
-set it was measured against, so a model is never compared against prompts that have since
-changed.
+answer passed, over this specific prompt set, at temperature 0, averaged over three samples
+per prompt. Every run is recorded below with the version hash of the prompt set it was
+measured against, so a model is never compared against prompts that have since changed.
 
 Three scoring bugs were found and fixed while producing this baseline: a Danish-language
 detector that failed on short sentences, a counting prompt that conflated correctness with
@@ -95,11 +113,11 @@ wrong rather than the models.
 
 | # | Model | Backend | Score | Delta | capability | robustness | Latency | tok/s | Trunc | Errors | Last run |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | Qwen3 8B (lokal) | ollama | 0.90 | - | 0.92 | 0.89 | 5.76s | 5.0 | 0 | 0 | baseline-v2 |
-| 2 | Qwythos 9B (lokal, HF GGUF) | ollama | 0.90 | - | 0.92 | 0.89 | 21.23s | 12.8 | 1 | 0 | baseline-v2 |
-| 3 | Llama 3.1 8B (lokal) | ollama | 0.81 | - | 0.71 | 0.91 | 4.68s | 6.2 | 0 | 0 | baseline-v2 |
-| 4 | Qwen2.5 Coder 7B (lokal) | ollama | 0.71 | - | 0.71 | 0.71 | 2.73s | 8.9 | 0 | 0 | baseline-v2 |
-| 5 | Mistral 7B Instruct (lokal) | ollama | 0.71 | - | 0.63 | 0.78 | 5.59s | 7.2 | 0 | 0 | baseline-v2 |
+| 1 | Qwen3 8B (lokal) | ollama | 0.90 | - | 0.92 | 0.89 | 4.93s | 5.7 | 0 | 0 | repeats3 |
+| 2 | Qwythos 9B (lokal, HF GGUF) | ollama | 0.90 | - | 0.92 | 0.89 | 19.03s | 14.3 | 3 | 0 | repeats3 |
+| 3 | Llama 3.1 8B (lokal) | ollama | 0.82 | - | 0.71 | 0.93 | 4.17s | 7.3 | 0 | 0 | repeats3 |
+| 4 | Qwen2.5 Coder 7B (lokal) | ollama | 0.71 | - | 0.71 | 0.71 | 2.55s | 10.7 | 0 | 0 | repeats3 |
+| 5 | Mistral 7B Instruct (lokal) | ollama | 0.70 | - | 0.62 | 0.78 | 3.72s | 8.3 | 0 | 0 | repeats3 |
 
 ## History
 
@@ -110,3 +128,8 @@ wrong rather than the models.
 | baseline-v2 | 2026-09-12T13:34 | Qwen2.5 Coder 7B (lokal) | 0.71 | capability@35e99cb347, robustness@bb35c96800 |
 | baseline-v2 | 2026-09-12T13:34 | Qwen3 8B (lokal) | 0.90 | capability@35e99cb347, robustness@bb35c96800 |
 | baseline-v2 | 2026-09-12T13:34 | Qwythos 9B (lokal, HF GGUF) | 0.90 | capability@35e99cb347, robustness@bb35c96800 |
+| repeats3 | 2026-09-13T08:41 | Llama 3.1 8B (lokal) | 0.82 | capability@1454e1484e, robustness@522ba4a0ad |
+| repeats3 | 2026-09-13T08:41 | Mistral 7B Instruct (lokal) | 0.70 | capability@1454e1484e, robustness@522ba4a0ad |
+| repeats3 | 2026-09-13T08:41 | Qwen2.5 Coder 7B (lokal) | 0.71 | capability@1454e1484e, robustness@522ba4a0ad |
+| repeats3 | 2026-09-13T08:41 | Qwen3 8B (lokal) | 0.90 | capability@1454e1484e, robustness@522ba4a0ad |
+| repeats3 | 2026-09-13T08:41 | Qwythos 9B (lokal, HF GGUF) | 0.90 | capability@1454e1484e, robustness@522ba4a0ad |

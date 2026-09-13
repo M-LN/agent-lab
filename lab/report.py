@@ -97,6 +97,37 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
     ]
     prompt_rows.sort(key=lambda row: (row["suite"], row["mean_score"]))
 
+    # Repeats: at temperature 0 the same prompt should score the same every time.
+    # Where it does not, the disagreement is itself a finding.
+    samples_per_cell = max((len(v) for v in matrix.values()), default=1)
+    unstable: list[dict[str, Any]] = []
+    per_model_cells: dict[str, list[list[float]]] = defaultdict(list)
+    for (prompt_id, mid), scores in matrix.items():
+        per_model_cells[mid].append(scores)
+        if len(scores) > 1 and max(scores) != min(scores):
+            unstable.append(
+                {
+                    "prompt_id": prompt_id,
+                    "model_id": mid,
+                    "label": models[mid]["label"],
+                    "suite": prompt_meta[prompt_id]["suite"],
+                    "scores": scores,
+                    "spread": round(max(scores) - min(scores), 4),
+                }
+            )
+    unstable.sort(key=lambda row: row["spread"], reverse=True)
+
+    for entry in leaderboard:
+        cells = per_model_cells[entry["model_id"]]
+        repeated = [c for c in cells if len(c) > 1]
+        entry["samples_per_prompt"] = max((len(c) for c in cells), default=1)
+        entry["stable_share"] = (
+            round(sum(1 for c in repeated if max(c) == min(c)) / len(repeated), 4) if repeated else None
+        )
+        entry["mean_spread"] = (
+            round(statistics.fmean([max(c) - min(c) for c in repeated]), 4) if repeated else None
+        )
+
     return {
         "generated": datetime.now().isoformat(timespec="seconds"),
         "models": [m["model_id"] for m in leaderboard],
@@ -108,6 +139,8 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
             name: {"pass_rate": _mean([float(v) for v in vals]), "n": len(vals)}
             for name, vals in sorted(check_stats.items())
         },
+        "samples_per_prompt": samples_per_cell,
+        "unstable": unstable,
         "total_records": len(records),
     }
 
@@ -167,6 +200,29 @@ def to_markdown(summary: dict[str, Any], meta: dict[str, Any]) -> str:
     for row in summary["prompts"][:12]:
         lines.append(f"| {row['prompt_id']} | {row['suite']} | {row['category']} | {row['mean_score']:.2f} |")
     lines.append("")
+
+    if summary.get("samples_per_prompt", 1) > 1:
+        lines.append(f"## Stabilitet ({summary['samples_per_prompt']} gentagelser, temperature 0)")
+        lines.append("")
+        lines.append("| Model | Identiske gentagelser | Gns. spredning |")
+        lines.append("|---|---|---|")
+        for row in summary["leaderboard"]:
+            share = row.get("stable_share")
+            lines.append(
+                f"| {row['label']} | {share:.0%} | {row.get('mean_spread', 0):.3f} |"
+                if share is not None
+                else f"| {row['label']} | - | - |"
+            )
+        lines.append("")
+        if summary["unstable"]:
+            lines.append("Prompts hvor gentagelserne var uenige:")
+            lines.append("")
+            lines.append("| Prompt | Model | Scores | Spredning |")
+            lines.append("|---|---|---|---|")
+            for row in summary["unstable"][:15]:
+                scores = ", ".join(f"{s:.2f}" for s in row["scores"])
+                lines.append(f"| {row['prompt_id']} | {row['label']} | {scores} | {row['spread']:.2f} |")
+            lines.append("")
 
     lines.append("## Check-typer")
     lines.append("")
@@ -281,6 +337,29 @@ def to_html(summary: dict[str, Any], meta: dict[str, Any]) -> str:
         for p in summary["prompts"]
     ]
     parts.append(_table(["Prompt", *[labels[m] for m in models]], rows))
+
+    if summary.get("samples_per_prompt", 1) > 1:
+        parts.append(f"<h2>Stabilitet ({summary['samples_per_prompt']} gentagelser)</h2>")
+        rows = [
+            [
+                row["label"],
+                _score_cell(row["stable_share"]) if row.get("stable_share") is not None else "-",
+                f'<span class="num">{row.get("mean_spread", 0):.3f}</span>',
+            ]
+            for row in summary["leaderboard"]
+        ]
+        parts.append(_table(["Model", "Identiske gentagelser", "Gns. spredning"], rows))
+        if summary["unstable"]:
+            rows = [
+                [
+                    f'{row["prompt_id"]} <span class="pill">{row["suite"]}</span>',
+                    row["label"],
+                    ", ".join(f"{s:.2f}" for s in row["scores"]),
+                    f'<span class="num">{row["spread"]:.2f}</span>',
+                ]
+                for row in summary["unstable"][:20]
+            ]
+            parts.append(_table(["Prompt", "Model", "Scores", "Spredning"], rows))
 
     parts.append("<h2>Check-typer</h2>")
     rows = [[name, _score_cell(s["pass_rate"]), f'<span class="num">{s["n"]}</span>'] for name, s in summary["check_types"].items()]

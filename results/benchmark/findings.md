@@ -72,14 +72,32 @@ category: it answered the invented theorem as though it were real. Between a mod
 "that is not in the table" and one that produces a plausible number, the score gap is small
 but the operational difference is total.
 
+### These are stable measurements, not lucky samples
+
+Every prompt was then run three times per model — 360 answers, zero failed calls. In 118 of
+the 120 prompt-model pairs, all three repeats scored **identically**. Aggregate scores moved
+by at most 0.01 against the single-sample baseline, so the ranking above is not an artefact
+of sampling.
+
+Two pairs disagreed, and both sit in the same place:
+
+- Llama 3.1 on the missing-table-value question: 0.60, 1.00, 1.00
+- Mistral 7B on the invented theorem: 0.25, 0.00, 0.00
+
+Both are *admitting ignorance* prompts. Everything these models do — arithmetic, JSON,
+formatting, code, resisting injection — they do the same way every time at temperature 0.
+The one thing they waver on is whether to say "I don't know". That is worth knowing before
+trusting one to abstain reliably.
+
+Qwythos truncated on exactly the same prompt in all three repeats, which makes its remaining
+budget failure a reproducible property rather than a fluke.
+
 ### How to read the scores
 
 A score is not an accuracy percentage. It is the weighted share of deterministic checks an
-answer passed, over this specific prompt set, at temperature 0, with one sample per prompt.
-A single run cannot separate a stable weakness from an unlucky sample — repeat runs are what
-make that distinction, and every run is recorded below with the version hash of the prompt
-set it was measured against, so a model is never compared against prompts that have since
-changed.
+answer passed, over this specific prompt set, at temperature 0, averaged over three samples
+per prompt. Every run is recorded below with the version hash of the prompt set it was
+measured against, so a model is never compared against prompts that have since changed.
 
 Three scoring bugs were found and fixed while producing this baseline: a Danish-language
 detector that failed on short sentences, a counting prompt that conflated correctness with
