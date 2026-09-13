@@ -72,11 +72,22 @@ models:
     token_budget: 2.0
     enabled: false
 
-  - id: hf/mistral-small-24b
-    label: Mistral Small 3.2 24B (HF)
+  # Verified 2026-09-13: the router serves no Mistral models on this account,
+  # and Mistral-Small-3.2-24B returns "is not a chat model".
+  - id: hf/gemma-3-27b
+    label: Gemma 3 27B (HF)
     backend: hf
-    model: mistralai/Mistral-Small-3.2-24B-Instruct-2506
+    model: google/gemma-3-27b-it
     tags: [api, mid]
+    enabled: false
+
+  # Same weights as local/llama3.1-8b, served instead of run locally - isolates
+  # quantisation and serving effects from model differences.
+  - id: hf/llama-3.1-8b
+    label: Llama 3.1 8B (HF)
+    backend: hf
+    model: meta-llama/Llama-3.1-8B-Instruct
+    tags: [api, small, twin]
     enabled: false
 
   - id: hf/gpt-oss-120b

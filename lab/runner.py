@@ -99,6 +99,9 @@ def execute_task(
         "completion_tokens": completion.completion_tokens,
         "max_tokens": max_tokens,
         "truncated": completion.truncated,
+        # Which provider the HF router picked affects latency and sometimes output.
+        "provider": completion.raw.get("provider"),
+        "finish_reason": completion.raw.get("finish_reason") or completion.raw.get("done_reason"),
         "error": completion.error,
         "output": completion.text,
         "reasoning_chars": len(completion.reasoning or ""),
