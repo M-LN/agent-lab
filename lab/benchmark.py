@@ -63,6 +63,7 @@ def build_rows(run_dir: Path) -> list[dict[str, Any]]:
                 "median_latency_s": entry["median_latency_s"],
                 "tokens_per_s": entry["tokens_per_s"],
                 "errors": entry["errors"],
+                "error_share": round(entry["errors"] / entry["runs"], 4) if entry["runs"] else 0.0,
                 "truncated": entry["truncated"],
                 "records": entry["runs"],
                 "suite_versions": {s: versions[s] for s in entry["by_suite"] if s in versions},
@@ -79,18 +80,25 @@ def load_history() -> list[dict[str, Any]]:
     return [json.loads(line) for line in HISTORY.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
-def append_run(run_dir: Path) -> int:
-    """Add (or refresh) this run's rows. Re-adding a run replaces its old rows."""
+def append_run(run_dir: Path, max_error_share: float = 0.1) -> tuple[int, list[dict[str, Any]]]:
+    """Add (or refresh) this run's rows. Re-adding a run replaces its old rows.
+
+    A model whose calls largely failed (rate limits, exhausted credits, a dead
+    endpoint) has not been measured - failed calls score zero, which would enter
+    the history as a real weakness. Those rows are excluded and reported back.
+    """
     rows = build_rows(run_dir)
+    keep = [r for r in rows if r["error_share"] <= max_error_share]
+    excluded = [r for r in rows if r["error_share"] > max_error_share]
     existing = [r for r in load_history() if r["run_id"] != run_dir.name]
-    merged = existing + rows
+    merged = existing + keep
     merged.sort(key=lambda r: (r["recorded"], r["run_id"], r["model_id"]))
 
     BENCH_DIR.mkdir(parents=True, exist_ok=True)
     with HISTORY.open("w", encoding="utf-8") as handle:
         for row in merged:
             handle.write(json.dumps(row, ensure_ascii=False) + "\n")
-    return len(rows)
+    return len(keep), excluded
 
 
 def current_board(history: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
@@ -164,7 +172,7 @@ def to_board_markdown(board: list[dict[str, Any]], history: list[dict[str, Any]]
                     row["backend"],
                     f"{row['score']:.2f}",
                     _delta_text(row["delta"]),
-                    *[f"{row['by_suite'].get(s, 0):.2f}" for s in suites],
+                    *[f"{row['by_suite'][s]:.2f}" if s in row["by_suite"] else "-" for s in suites],
                     f"{row['median_latency_s']}s" if row["median_latency_s"] is not None else "-",
                     str(row["tokens_per_s"] or "-"),
                     str(row["truncated"]),
@@ -191,7 +199,7 @@ def to_board_markdown(board: list[dict[str, Any]], history: list[dict[str, Any]]
 
 def to_board_html(board: list[dict[str, Any]], history: list[dict[str, Any]], notes: str | None) -> str:
     from .markdown import render as render_markdown
-    from .report import _score_cell, _table, page
+    from .report import _maybe_score_cell, _score_cell, _table, page
 
     suites = sorted({s for row in board for s in row["by_suite"]})
     parts: list[str] = []
@@ -214,7 +222,7 @@ def to_board_html(board: list[dict[str, Any]], history: list[dict[str, Any]], no
                 f'{row["label"]} <span class="pill">{row["backend"]}</span>',
                 _score_cell(row["score"]),
                 delta_html,
-                *[_score_cell(row["by_suite"].get(s, 0.0)) for s in suites],
+                *[_maybe_score_cell(row["by_suite"], s) for s in suites],
                 f'<span class="num">{row["median_latency_s"] if row["median_latency_s"] is not None else "-"}</span>',
                 f'<span class="num">{row["tokens_per_s"] or "-"}</span>',
                 f'<span class="num">{row["truncated"]}</span>',

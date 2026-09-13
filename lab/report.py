@@ -173,7 +173,7 @@ def to_markdown(summary: dict[str, Any], meta: dict[str, Any]) -> str:
             row["label"],
             row["backend"],
             f"{row['score']:.2f} {_bar(row['score'])}",
-            *[f"{row['by_suite'].get(s, 0):.2f}" for s in suites],
+            *[f"{row['by_suite'][s]:.2f}" if s in row["by_suite"] else "-" for s in suites],
             f"{row['median_latency_s']}s" if row["median_latency_s"] is not None else "-",
             str(row["tokens_per_s"] or "-"),
             str(row["truncated"]),
@@ -189,7 +189,7 @@ def to_markdown(summary: dict[str, Any], meta: dict[str, Any]) -> str:
     lines.append("|" + "|".join(["---"] * (len(categories) + 1)) + "|")
     for row in summary["leaderboard"]:
         lines.append(
-            "| " + row["label"] + " | " + " | ".join(f"{row['by_category'].get(c, 0):.2f}" for c in categories) + " |"
+            "| " + row["label"] + " | " + " | ".join(f"{row['by_category'][c]:.2f}" if c in row["by_category"] else "-" for c in categories) + " |"
         )
     lines.append("")
 
@@ -282,6 +282,13 @@ def page(*, title: str, heading: str, meta_line: str, body: str, footer: str, la
     )
 
 
+def _maybe_score_cell(scores: dict[str, float], key: str) -> str:
+    """Not measured is not the same as scored zero."""
+    if key not in scores:
+        return '<span class="pill">not run</span>'
+    return _score_cell(scores[key])
+
+
 def _score_cell(score: float) -> str:
     hue = 12 + 116 * score  # red -> green
     return (
@@ -312,7 +319,7 @@ def to_html(summary: dict[str, Any], meta: dict[str, Any]) -> str:
                 f'<span class="rank">{i}</span>',
                 f'{row["label"]} <span class="pill">{row["backend"]}</span>',
                 _score_cell(row["score"]),
-                *[_score_cell(row["by_suite"].get(s, 0.0)) for s in suites],
+                *[_maybe_score_cell(row["by_suite"], s) for s in suites],
                 f'<span class="num">{row["median_latency_s"] if row["median_latency_s"] is not None else "-"}</span>',
                 f'<span class="num">{row["tokens_per_s"] or "-"}</span>',
                 f'<span class="num">{row["truncated"]}</span>',
@@ -323,7 +330,7 @@ def to_html(summary: dict[str, Any], meta: dict[str, Any]) -> str:
 
     parts.append("<h2>Kategorier</h2>")
     rows = [
-        [row["label"], *[_score_cell(row["by_category"].get(c, 0.0)) for c in categories]]
+        [row["label"], *[_maybe_score_cell(row["by_category"], c) for c in categories]]
         for row in summary["leaderboard"]
     ]
     parts.append(_table(["Model", *categories], rows))

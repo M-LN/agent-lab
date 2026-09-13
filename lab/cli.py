@@ -203,9 +203,14 @@ def cmd_show(args: argparse.Namespace) -> int:
 
 
 def _record_in_benchmark(run_dir: Path) -> None:
-    added = append_run(run_dir)
+    added, excluded = append_run(run_dir)
     paths = write_board()
     console.print(f"[cyan]Benchmark:[/cyan] {added} row(s) from {run_dir.name} -> {paths['html']}")
+    for row in excluded:
+        console.print(
+            f"  [yellow]excluded {row['model_id']}[/yellow]: {row['errors']}/{row['records']} calls failed"
+            " - not a measurement"
+        )
 
 
 def cmd_bench(args: argparse.Namespace) -> int:

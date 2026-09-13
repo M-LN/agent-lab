@@ -60,12 +60,40 @@ def bench(tmp_path, monkeypatch):
     return tmp_path
 
 
+def fail_calls(run_dir: Path, model_id: str, how_many: int) -> None:
+    """Turn the first N records of a model into failed calls, as a rate limit would."""
+    path = run_dir / "results.jsonl"
+    records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    hit = 0
+    for record in records:
+        if record["model_id"] == model_id and hit < how_many:
+            record.update({"error": "RuntimeError: HTTP 402", "score": 0.0, "output": ""})
+            hit += 1
+    path.write_text("\n".join(json.dumps(r) for r in records), encoding="utf-8")
+
+
 def test_append_run_is_idempotent(bench):
     run = make_run(bench, "run1", {"m/a": 1.0})
     benchmark.append_run(run)
     benchmark.append_run(run)
     history = benchmark.load_history()
     assert len(history) == 1, "re-adding a run must replace its rows, not duplicate them"
+
+
+def test_failure_dominated_models_stay_out_of_the_history(bench):
+    run = make_run(bench, "run1", {"m/ok": 1.0, "m/broken": 1.0})
+    fail_calls(run, "m/broken", 2)  # both of its calls failed
+    added, excluded = benchmark.append_run(run)
+
+    assert added == 1
+    assert [r["model_id"] for r in excluded] == ["m/broken"]
+    assert [r["model_id"] for r in benchmark.load_history()] == ["m/ok"]
+
+
+def test_a_few_failed_calls_are_tolerated(bench):
+    run = make_run(bench, "run1", {"m/a": 1.0})
+    added, excluded = benchmark.append_run(run, max_error_share=0.6)
+    assert added == 1 and excluded == []
 
 
 def test_board_reports_delta_between_runs(bench):
