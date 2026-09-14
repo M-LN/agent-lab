@@ -622,6 +622,12 @@ def build(out_path: Path) -> str:
     .lab-na {{ font-family: var(--mono); font-size: 11px; color: var(--muted); }}
     .lab-foot {{ font-family: var(--mono); font-size: 11px; color: var(--muted);
       margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--border); }}
+    /* This page's badge carries three facts rather than one phrase, so on a
+       narrow screen it has to wrap instead of running off the edge. */
+    @media (max-width: 720px) {{
+      .topic-header {{ flex-wrap: wrap; gap: 8px; }}
+      .topic-badge {{ white-space: normal; text-align: left; }}
+    }}
   </style>
 </head>
 <body>
