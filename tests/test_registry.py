@@ -80,3 +80,15 @@ def test_comments_survive_the_edit(tmp_path):
     text = path.read_text(encoding="utf-8")
     assert "# registry header comment" in text
     assert "# keep this note" in text
+
+
+def test_entry_carries_the_parameter_count():
+    """Without it the model is missing from every figure plotted against scale."""
+    _, block = build_entry("llama3.1:8b")
+    assert "    parameters: 8\n" in block
+
+    _, gguf = build_entry("hf.co/mlabonne/Meta-Llama-3.1-8B-Instruct-abliterated-GGUF:Q4_K_M")
+    assert "    parameters: 8\n" in gguf
+
+    _, unknown = build_entry("mistral:latest")
+    assert "parameters:" not in unknown, "a count that cannot be read must not be invented"

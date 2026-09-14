@@ -69,8 +69,13 @@ def build_entry(
         f"    label: {label or default_label(model, backend)}",
         f"    backend: {backend}",
         f"    model: {model}",
-        f"    tags: [{', '.join(tags)}]",
     ]
+    # Without a parameter count the model is missing from any figure plotted
+    # against scale, so infer it from the name when it is there to infer.
+    params = parameter_count(model)
+    if params is not None:
+        lines.append(f"    parameters: {params:g}")
+    lines.append(f"    tags: [{', '.join(tags)}]")
     if token_budget and token_budget > 1:
         lines.append(f"    token_budget: {token_budget:g}   # spends part of the budget reasoning")
     if "qwen3" in model.lower() and backend == "ollama":
