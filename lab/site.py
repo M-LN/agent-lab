@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import re
+import statistics
 from datetime import date
 from html import escape
 from pathlib import Path
@@ -92,6 +93,51 @@ def ladder_stats(run_ids: tuple[str, ...] = ("ladder-v2", "ladder-cloud")) -> di
         "total": measured + benign,
         "refusals": refusals,
     }
+
+
+# What the hierarchy figure contrasts: doing the task well, against holding a rule
+# when the input argues otherwise. Both are drawn from the same recorded runs.
+CONTENT_PROMPTS = [
+    "cap_math_multistep", "cap_code_intervals", "cap_extract_json", "cap_classify_batch",
+    "cap_summarize_tight", "cap_table_reasoning", "cap_instruction_bullets",
+    "rob_strict_schema", "rob_needle_in_context", "rob_json_no_prose",
+]
+HIERARCHY_PROMPTS = ["rob_injection_document", "grd_authority_pressure", "grd_persona_hold"]
+HIERARCHY_RUNS = ("repeats3", "guardrails-local", "hf-capability", "hf-robustness", "guardrails-cloud")
+
+
+def hierarchy_figure_data() -> list[dict]:
+    """Per model: content competence, rule-holding, and parameter count."""
+    from .config import load_config
+
+    scores: dict[str, dict[str, float]] = {}
+    for run_id in HIERARCHY_RUNS:
+        summary = load_summary(run_id)
+        for row in summary.get("prompts", []):
+            for model_id, value in row["scores"].items():
+                scores.setdefault(model_id, {})[row["prompt_id"]] = value
+
+    sizes = {m.id: m.parameters for m in load_config().models}
+    labels = {row["model_id"]: row["label"] for row in current_board()}
+    backends = {row["model_id"]: row["backend"] for row in current_board()}
+
+    out = []
+    for model_id, prompts in scores.items():
+        content = [prompts[p] for p in CONTENT_PROMPTS if p in prompts]
+        hierarchy = [prompts[p] for p in HIERARCHY_PROMPTS if p in prompts]
+        if not content or not hierarchy or not sizes.get(model_id):
+            continue
+        out.append(
+            {
+                "label": clean_label(labels.get(model_id, model_id)),
+                "parameters": sizes[model_id],
+                "content": round(statistics.fmean(content), 4),
+                "hierarchy": round(statistics.fmean(hierarchy), 4),
+                "hosted": backends.get(model_id) == "hf",
+            }
+        )
+    out.sort(key=lambda row: row["parameters"])
+    return out
 
 
 def prompt_scores(summary: dict, prompt_id: str) -> dict[str, float]:
@@ -266,6 +312,14 @@ def narrative_values(history: list[dict] | None = None) -> dict:
         "table:history": "",
         "chart": chart,
         "chart_data": chart_data,
+        "chart:hierarchy": (
+            '<div class="va">'
+            '<div class="vl">Doing the task well, against holding a rule under pressure</div>'
+            '<canvas id="hierarchyChart" role="img" aria-label="Content competence against'
+            ' instruction-hierarchy resistance, by model size" width="780" height="400"></canvas>'
+            "</div>"
+        ),
+        "hierarchy_data": json.dumps(hierarchy_figure_data(), ensure_ascii=False),
         "ladder_topics": ladder_topics,
         "ladder_total": ladders["total"] if ladders else 0,
         "ladder_measurements": ladders["measured"] if ladders else 0,
@@ -319,6 +373,7 @@ def build(out_path: Path) -> str:
     )
     body = f'<div class="topic" id="model-lab">{header}{body}</div>'
     chart_data = values["chart_data"]
+    hierarchy_data = values["hierarchy_data"]
 
     page = f"""<!DOCTYPE html>
 <html lang="en">
@@ -403,6 +458,7 @@ function toggleTheme() {{
   d.setAttribute('data-theme', d.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
   localStorage.setItem('theme', d.getAttribute('data-theme'));
   drawLabChart();
+  drawHierarchy();
 }}
 
 const LAB_DATA = {chart_data};
@@ -458,8 +514,65 @@ function drawLabChart() {{
   ctx.fillStyle = muted; ctx.fillText('robustness', left + 134, 16);
 }}
 
+const HIER_DATA = {hierarchy_data};
+
+function drawHierarchy() {{
+  const canvas = document.getElementById('hierarchyChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const css = getComputedStyle(document.documentElement);
+  const v = (name, fallback) => (css.getPropertyValue(name).trim() || fallback);
+  const text = v('--text', '#1a1714'), muted = v('--muted', '#6a5e52');
+  const border = v('--border', '#e2d9cc');
+  const good = v('--accent2', '#2a7d5f'), bad = v('--accent', '#bd4527');
+
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  const left = 190, right = 34, top = 46, bottom = 48;
+  const plotW = W - left - right, plotH = H - top - bottom;
+  const rowH = plotH / HIER_DATA.length;
+  const x = s => left + plotW * s;
+
+  ctx.font = '11px ' + v('--mono', 'monospace');
+  for (let t = 0; t <= 1.0001; t += 0.25) {{
+    ctx.strokeStyle = border; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x(t), top - 14); ctx.lineTo(x(t), top + plotH - rowH / 2); ctx.stroke();
+    ctx.fillStyle = muted; ctx.textAlign = 'center';
+    ctx.fillText(t.toFixed(2), x(t), top + plotH - rowH / 2 + 20);
+  }}
+
+  HIER_DATA.forEach((d, i) => {{
+    const y = top + rowH * i;
+    ctx.textAlign = 'right';
+    ctx.fillStyle = text; ctx.font = '12px ' + v('--sans', 'sans-serif');
+    ctx.fillText(d.label, left - 58, y + 4);
+    ctx.fillStyle = muted; ctx.font = '11px ' + v('--mono', 'monospace');
+    ctx.fillText(d.parameters + 'B', left - 12, y + 4);
+
+    // The bar between the two dots is the gap: competence minus rule-holding.
+    ctx.strokeStyle = border; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x(d.hierarchy), y); ctx.lineTo(x(d.content), y); ctx.stroke();
+    [[d.hierarchy, bad], [d.content, good]].forEach(([value, colour]) => {{
+      ctx.fillStyle = colour;
+      ctx.beginPath(); ctx.arc(x(value), y, 5.5, 0, Math.PI * 2); ctx.fill();
+    }});
+  }});
+
+  ctx.textAlign = 'left'; ctx.font = '11px ' + v('--mono', 'monospace');
+  ctx.fillStyle = bad;
+  ctx.beginPath(); ctx.arc(left + 4, 16, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = muted; ctx.fillText('holding a rule under pressure', left + 16, 20);
+  ctx.fillStyle = good;
+  ctx.beginPath(); ctx.arc(left + 240, 16, 5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = muted; ctx.fillText('doing the task', left + 252, 20);
+}}
+
 drawLabChart();
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawLabChart);
+drawHierarchy();
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {{
+  drawLabChart();
+  drawHierarchy();
+}});
 </script>
 <script defer src="../js/ui-enhance.js?v=25"></script>
 </body>

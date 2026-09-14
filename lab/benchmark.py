@@ -315,7 +315,16 @@ def notes(history: list[dict[str, Any]]) -> str | None:
     return content.render(
         text,
         values,
-        drop={"chart", "table:leaderboard", "table:injection", "table:ladder", "table:history"},
+        # Figures are canvases the site page draws with its own script; the board
+        # has no script, so an included canvas would render as an empty box.
+        drop={
+            "chart",
+            "chart:hierarchy",
+            "table:leaderboard",
+            "table:injection",
+            "table:ladder",
+            "table:history",
+        },
     )
 
 

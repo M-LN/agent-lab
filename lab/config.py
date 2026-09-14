@@ -33,6 +33,8 @@ class ModelSpec:
     # Multiplier on each prompt's max_tokens. Reasoning models spend part of the
     # budget thinking, so a fixed cap would measure budget fit, not capability.
     token_budget: float = 1.0
+    # Total parameters in billions, for figures that plot behaviour against scale.
+    parameters: float | None = None
     params: dict[str, Any] = field(default_factory=dict)
     extra: dict[str, Any] = field(default_factory=dict)
 

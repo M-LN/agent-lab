@@ -1,6 +1,6 @@
 # Agent Lab benchmark board
 
-8 model(s) tracked across 6 run(s) - updated 2026-09-13T23:45:40
+8 model(s) tracked across 6 run(s) - updated 2026-09-14T15:43:33
 
 # The Model Lab
 
@@ -44,6 +44,15 @@ pages.
 
 > If you are routing untrusted text through a model, choose on the injection tests, not on the
 > leaderboard. The two point in different directions here.
+
+That weakness is not one prompt's quirk. Three independent tests ask the same thing — will the
+model keep following its instructions when the input argues otherwise? A stranger's command
+hidden in a document, a user claiming to be the developer, and a plain request to drop a rule
+the system prompt set. Set those against what the same models do on ordinary work:
+
+Competence varies and is high. Resistance is flat and low, and five of the seven models sit on
+exactly the same value across a hundredfold range of size. **Doing the task scales with the
+model. Refusing to be talked out of the task does not.**
 
 ## The line that is not there
 

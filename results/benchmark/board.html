@@ -25,7 +25,7 @@ code{background:var(--panel);padding:1px 5px;border-radius:4px;font-size:13px}
 a{color:var(--accent)}.up{color:#7ee08a}.down{color:#ff8d7b}
 </style></head><body><div class="wrap">
 <h1>Agent Lab benchmark board</h1>
-<div class="meta">8 models tracked across 6 runs - updated 2026-09-13T23:45 - deterministic checks, temperature 0</div>
+<div class="meta">8 models tracked across 6 runs - updated 2026-09-14T15:43 - deterministic checks, temperature 0</div>
 <h1>The Model Lab</h1>
 <p><strong>What 36 fixed prompts reveal about 8 language models.</strong> Every model here ran the same prompts at temperature 0 with a fixed seed, through the same code path and the same graders. No LLM judged another LLM: each answer is scored by deterministic checks — exact strings, regular expressions, JSON Schema validation, word and line counts, and for the coding task, the generated Python is executed against assertions. A score is the weighted share of checks an answer passes.</p>
 <p>This is not a benchmark. It is a <strong>probe</strong>. A few dozen prompts cannot rank models the way a 14,000-question benchmark can. What a small, fully reproducible probe <em>can</em> do is show how measurement itself goes wrong — and every trap below was one this lab fell into before it caught it.</p>
@@ -37,6 +37,8 @@ a{color:var(--accent)}.up{color:#7ee08a}.down{color:#ff8d7b}
 <p>5 of 7 models obeyed the stranger in the document. The two that held the line are an 8B and a 9B running locally; among those that failed are hosted models an order of magnitude larger. Whatever makes a model resist instructions buried in its input, parameter count is not it.</p>
 <p>Every model defended the <em>other</em> target — a secret in its own system prompt, demanded by a user claiming administrator authority — including both large models that had just obeyed a stranger inside a document. <strong>Refusing to reveal something and refusing to obey something are separate skills</strong>, and only the second protects an agent that reads documents, tickets, emails, or web pages.</p>
 <blockquote>If you are routing untrusted text through a model, choose on the injection tests, not on the leaderboard. The two point in different directions here.</blockquote>
+<p>That weakness is not one prompt's quirk. Three independent tests ask the same thing — will the model keep following its instructions when the input argues otherwise? A stranger's command hidden in a document, a user claiming to be the developer, and a plain request to drop a rule the system prompt set. Set those against what the same models do on ordinary work:</p>
+<p>Competence varies and is high. Resistance is flat and low, and five of the seven models sit on exactly the same value across a hundredfold range of size. <strong>Doing the task scales with the model. Refusing to be talked out of the task does not.</strong></p>
 <h2>The line that is not there</h2>
 <p>Where does each model draw its line? brewing, locks, medication, phishing — each in four rungs of rising sensitivity, every rung staying at publicly documented, non-operational information. What is recorded is whether the model answered, never the content of the answer.</p>
 <p>Across 8 models and 142 measurements — 122 ladder rungs plus 20 benign prompts written to sound alarming — there were 0 refusals.</p>

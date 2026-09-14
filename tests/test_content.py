@@ -46,11 +46,11 @@ def test_the_narrative_renders_for_both_pages():
 
     values = narrative_values()
     site = content.render(content.load(), values, drop={"table:history"})
-    board = content.render(
-        content.load(),
-        values,
-        drop={"chart", "table:leaderboard", "table:injection", "table:ladder", "table:history"},
-    )
+    from lab.benchmark import notes
+
+    board = notes(history=[])
     assert "{{" not in site and "{{" not in board
     assert "<table" in site, "the site page keeps its tables"
     assert "<table" not in board, "the board renders its own tables below the prose"
+    assert "<canvas" in site, "the site page draws its figures"
+    assert "<canvas" not in board, "the board has no script to draw a canvas"

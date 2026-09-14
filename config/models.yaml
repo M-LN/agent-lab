@@ -19,6 +19,7 @@ models:
     label: Qwen3 8B (lokal)
     backend: ollama
     model: qwen3:8b
+    parameters: 8
     tags: [local, small, reasoning]
     params:
       think: false        # otherwise the answer is buried in chain-of-thought
@@ -27,24 +28,28 @@ models:
     label: Llama 3.1 8B (lokal)
     backend: ollama
     model: llama3.1:8b
+    parameters: 8
     tags: [local, small]
 
   - id: local/mistral-7b
     label: Mistral 7B Instruct (lokal)
     backend: ollama
     model: mistral:7b-instruct
+    parameters: 7
     tags: [local, small]
 
   - id: local/qwen2.5-coder-7b
     label: Qwen2.5 Coder 7B (lokal)
     backend: ollama
     model: qwen2.5-coder:7b
+    parameters: 7
     tags: [local, small, code]
 
   - id: local/qwythos-9b
     label: Qwythos 9B (lokal, HF GGUF)
     backend: ollama
     model: hf.co/empero-ai/Qwythos-9B-Claude-Mythos-5-1M-GGUF:Q4_K_M
+    parameters: 9
     tags: [local, hf-gguf, reasoning]
     token_budget: 3.0   # enough for every prompt it can answer at all. Six rungs of
                         # the refusal ladder it cannot: at 6.0 it produced 18,000
@@ -57,6 +62,7 @@ models:
     label: Llama 3.3 70B (HF)
     backend: hf
     model: meta-llama/Llama-3.3-70B-Instruct
+    parameters: 70
     tags: [api, large]
     enabled: false
 
@@ -64,6 +70,7 @@ models:
     label: Qwen2.5 72B (HF)
     backend: hf
     model: Qwen/Qwen2.5-72B-Instruct
+    parameters: 72
     tags: [api, large]
     enabled: false
 
@@ -71,6 +78,7 @@ models:
     label: DeepSeek V3 (HF)
     backend: hf
     model: deepseek-ai/DeepSeek-V3-0324
+    parameters: 671
     tags: [api, large, reasoning]
     token_budget: 2.0
     enabled: false
@@ -81,6 +89,7 @@ models:
     label: Gemma 3 27B (HF)
     backend: hf
     model: google/gemma-3-27b-it
+    parameters: 27
     tags: [api, mid]
     enabled: false
 
@@ -90,6 +99,7 @@ models:
     label: Llama 3.1 8B (HF)
     backend: hf
     model: meta-llama/Llama-3.1-8B-Instruct
+    parameters: 8
     tags: [api, small, twin]
     enabled: false
 
@@ -97,6 +107,7 @@ models:
     label: gpt-oss 120B (HF)
     backend: hf
     model: openai/gpt-oss-120b
+    parameters: 120
     tags: [api, large, reasoning]
     token_budget: 2.5
     enabled: false
