@@ -323,6 +323,7 @@ def notes(history: list[dict[str, Any]]) -> str | None:
             "table:leaderboard",
             "table:injection",
             "table:ladder",
+            "table:twins",
             "table:history",
         },
     )

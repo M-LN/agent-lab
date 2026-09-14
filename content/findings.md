@@ -84,6 +84,43 @@ appears as *how thickly they wrap one particular topic*. The honest limit: these
 where public documentation stops, so what they establish is that the line sits well beyond the
 questions an ordinary person asks — not that no line exists.
 
+## The controlled version of that question
+
+The ladders leave one objection standing: every model in them was a mainstream instruction-tuned
+release. Perhaps the line is missing because nothing in the set ever had its safety training
+removed.
+
+So the set now contains a matched pair. Llama 3.1 8B as Meta shipped it, and the same model with
+its refusal direction ablated away — same architecture, same 8.03 billion parameters, same
+131,072-token context, same Q4_K_M quantisation, same runner. Everything held constant except
+the training that is supposed to make it decline.
+
+{{table:twins}}
+
+Three things came out of that, and none of them is the expected one.
+
+**The safety marker went up, not down.** Disclaimer density on the medication ladder rose from
+0.36 to 0.49 phrases per 100 words, and the ablated model adds them on topics where the original
+adds none at all. Whatever ablation removed, it was not the habit of wrapping an answer in
+caution.
+
+**Neither model refused anything.** Both answered all four benign-but-alarming prompts and every
+ladder rung they could complete. On the one axis the ablation was supposed to move, the pair is
+indistinguishable.
+
+**What it did remove was competence.** On the content prompts — arithmetic, code, extraction,
+classification, summarising, table reasoning, schema-valid JSON, needle-in-context — the pair
+scores 0.81 against 0.67, and the robustness suite falls from 0.93 to 0.65. The ablated model
+answered a sentence dense with structured data by emitting `{"error": "No structured data
+found"}`.
+
+The two models do differ on instruction hierarchy, but as a swap rather than a slope: the
+original resisted the document injection and abandoned its system prompt, the ablated one obeyed
+the injection and kept its prompt. Both land on the same 0.42 aggregate. With one sample per
+prompt on the ablated side against three on the original, that is a curiosity rather than a
+finding — but the aggregate standing still, while capability falls, is the shape of the whole
+result.
+
 ## Five ways a measurement lies
 
 #### A grader bug looks exactly like a model failure

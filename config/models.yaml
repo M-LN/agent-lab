@@ -56,6 +56,13 @@ models:
                         # characters of reasoning and zero answer, so its reasoning
                         # expands to fill whatever budget it is given.
 
+  - id: local/llama3.1-8b-abliterated
+    label: Llama 3.1 8B abliterated (lokal)
+    backend: ollama
+    model: hf.co/mlabonne/Meta-Llama-3.1-8B-Instruct-abliterated-GGUF:Q4_K_M
+    parameters: 8
+    tags: [local, small]
+
   # ------------------------------------------------- Hugging Face Inference Providers
   # Enable these once HF_TOKEN is in .env (set enabled: true, or use --include-disabled).
   - id: hf/llama-3.3-70b

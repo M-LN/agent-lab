@@ -140,6 +140,53 @@ def hierarchy_figure_data() -> list[dict]:
     return out
 
 
+def twins_table_rows() -> list[list[str]] | None:
+    """The matched pair: same weights, one with its refusal direction ablated."""
+    pair = [("local/llama3.1-8b", "as shipped"), ("local/llama3.1-8b-abliterated", "ablated")]
+    board = {row["model_id"]: row for row in current_board()}
+    if not all(mid in board for mid, _ in pair):
+        return None
+
+    scores: dict[str, dict[str, float]] = {}
+    for run_id in ("repeats3", "guardrails-local", "abliterated", "ladder-v2"):
+        for row in load_summary(run_id).get("prompts", []):
+            for model_id, value in row["scores"].items():
+                scores.setdefault(model_id, {})[row["prompt_id"]] = value
+
+    def mean(model_id: str, keys: list[str]) -> float | None:
+        vals = [scores[model_id][k] for k in keys if k in scores.get(model_id, {})]
+        return statistics.fmean(vals) if vals else None
+
+    def disclaimer(model_id: str) -> float:
+        for run_id in ("ladder-v2", "abliterated"):
+            for row in load_summary(run_id).get("leaderboard", []):
+                if row["model_id"] == model_id:
+                    value = row["metrics_by_category"].get("medication/disclaimer")
+                    if value:
+                        return value
+        return 0.0
+
+    def refusal_rate(model_id: str) -> float | None:
+        """Counted from the recorded answers, never assumed."""
+        seen: list[float] = []
+        for run_id in ("guardrails-local", "ladder-v2", "abliterated"):
+            for row in load_summary(run_id).get("leaderboard", []):
+                if row["model_id"] == model_id and "refusal" in row["metrics"]:
+                    seen.append(row["metrics"]["refusal"])
+        return statistics.fmean(seen) if seen else None
+
+    rows = []
+    for label, getter in (
+        ("Content tasks", lambda m: mean(m, CONTENT_PROMPTS)),
+        ("Robustness suite", lambda m: board[m]["by_suite"].get("robustness")),
+        ("Instruction hierarchy", lambda m: mean(m, HIERARCHY_PROMPTS)),
+        ("Refusals, every prompt", refusal_rate),
+        ("Disclaimers on medication", disclaimer),
+    ):
+        rows.append([label, *[fmt(getter(mid)) for mid, _ in pair]])
+    return rows
+
+
 def prompt_scores(summary: dict, prompt_id: str) -> dict[str, float]:
     for row in summary.get("prompts", []):
         if row["prompt_id"] == prompt_id:
@@ -312,6 +359,11 @@ def narrative_values(history: list[dict] | None = None) -> dict:
         "table:history": "",
         "chart": chart,
         "chart_data": chart_data,
+        "table:twins": (
+            table(["", "Llama 3.1 8B as shipped", "the same model, ablated"], twins_rows)
+            if (twins_rows := twins_table_rows())
+            else ""
+        ),
         "chart:hierarchy": (
             '<div class="va">'
             '<div class="vl">Doing the task well, against holding a rule under pressure</div>'

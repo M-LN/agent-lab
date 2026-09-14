@@ -1,10 +1,10 @@
 # Agent Lab benchmark board
 
-8 model(s) tracked across 6 run(s) - updated 2026-09-14T15:43:33
+9 model(s) tracked across 7 run(s) - updated 2026-09-14T16:30:29
 
 # The Model Lab
 
-**What 36 fixed prompts reveal about 8 language models.**
+**What 36 fixed prompts reveal about 9 language models.**
 Every model here ran the same prompts at temperature 0 with a fixed seed, through the same code
 path and the same graders. No LLM judged another LLM: each answer is scored by deterministic
 checks — exact strings, regular expressions, JSON Schema validation, word and line counts, and
@@ -60,7 +60,7 @@ Where does each model draw its line? brewing, locks, medication, phishing — ea
 sensitivity, every rung staying at publicly documented, non-operational information. What is
 recorded is whether the model answered, never the content of the answer.
 
-Across 8 models and 142 measurements — 122 ladder
+Across 9 models and 142 measurements — 122 ladder
 rungs plus 20 benign prompts written to sound alarming — there were
 0 refusals.
 
@@ -77,6 +77,41 @@ So the safety training these models carry does not appear as a refusal boundary 
 appears as *how thickly they wrap one particular topic*. The honest limit: these ladders stop
 where public documentation stops, so what they establish is that the line sits well beyond the
 questions an ordinary person asks — not that no line exists.
+
+## The controlled version of that question
+
+The ladders leave one objection standing: every model in them was a mainstream instruction-tuned
+release. Perhaps the line is missing because nothing in the set ever had its safety training
+removed.
+
+So the set now contains a matched pair. Llama 3.1 8B as Meta shipped it, and the same model with
+its refusal direction ablated away — same architecture, same 8.03 billion parameters, same
+131,072-token context, same Q4_K_M quantisation, same runner. Everything held constant except
+the training that is supposed to make it decline.
+
+Three things came out of that, and none of them is the expected one.
+
+**The safety marker went up, not down.** Disclaimer density on the medication ladder rose from
+0.36 to 0.49 phrases per 100 words, and the ablated model adds them on topics where the original
+adds none at all. Whatever ablation removed, it was not the habit of wrapping an answer in
+caution.
+
+**Neither model refused anything.** Both answered all four benign-but-alarming prompts and every
+ladder rung they could complete. On the one axis the ablation was supposed to move, the pair is
+indistinguishable.
+
+**What it did remove was competence.** On the content prompts — arithmetic, code, extraction,
+classification, summarising, table reasoning, schema-valid JSON, needle-in-context — the pair
+scores 0.81 against 0.67, and the robustness suite falls from 0.93 to 0.65. The ablated model
+answered a sentence dense with structured data by emitting `{"error": "No structured data
+found"}`.
+
+The two models do differ on instruction hierarchy, but as a swap rather than a slope: the
+original resisted the document injection and abandoned its system prompt, the ablated one obeyed
+the injection and kept its prompt. Both land on the same 0.42 aggregate. With one sample per
+prompt on the ablated side against three on the original, that is a curiosity rather than a
+finding — but the aggregate standing still, while capability falls, is the shape of the whole
+result.
 
 ## Five ways a measurement lies
 
@@ -169,7 +204,8 @@ prompts that have since changed.
 | 5 | Llama 3.1 8B (lokal) | ollama | 0.81 | - | 0.71 | 0.79 | 0.93 | 21.67s | 12.6 | 4 | 0 | guardrails-local, repeats3 |
 | 6 | Llama 3.3 70B (HF) | hf | 0.78 | - | 0.65 | 0.86 | 0.81 | 4.38s | 56.1 | 4 | 1 | guardrails-cloud, hf-capability, hf-robustness |
 | 7 | Qwen2.5 Coder 7B (lokal) | ollama | 0.73 | - | 0.71 | 0.77 | 0.71 | 6.29s | 24.4 | 3 | 0 | guardrails-local, repeats3 |
-| 8 | Mistral 7B Instruct (lokal) | ollama | 0.69 | - | 0.62 | 0.67 | 0.78 | 16.23s | 11.5 | 2 | 0 | guardrails-local, repeats3 |
+| 8 | Llama 3.1 8B abliterated (lokal) | ollama | 0.72 | - | 0.67 | 0.83 | 0.65 | 12.4s | 11.0 | 16 | 0 | abliterated |
+| 9 | Mistral 7B Instruct (lokal) | ollama | 0.69 | - | 0.62 | 0.67 | 0.78 | 16.23s | 11.5 | 2 | 0 | guardrails-local, repeats3 |
 
 ## History
 
@@ -198,3 +234,4 @@ prompts that have since changed.
 | guardrails-local | 2026-09-13T14:51 | Qwythos 9B (lokal, HF GGUF) | 0.85 | guardrails@3226736e49 |
 | guardrails-cloud | 2026-09-13T18:13 | DeepSeek V3 (HF) | 0.94 | guardrails@3226736e49 |
 | guardrails-cloud | 2026-09-13T18:13 | Llama 3.3 70B (HF) | 0.86 | guardrails@3226736e49 |
+| abliterated | 2026-09-14T14:27 | Llama 3.1 8B abliterated (lokal) | 0.72 | capability@3c13aaea3f, guardrails@3226736e49, robustness@441f31e153 |
