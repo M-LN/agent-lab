@@ -15,6 +15,7 @@ from rich.progress import BarColumn, Progress, TextColumn, TimeElapsedColumn
 
 from .backends import Backend, get_backend
 from .config import LabConfig, ModelSpec, PromptSpec, RESULTS_DIR, Suite
+from .environment import capture as capture_environment
 from .graders import run_checks
 
 console = Console()
@@ -226,6 +227,8 @@ def run_suites(
         "defaults": config.defaults,
         "host": platform.node(),
         "python": platform.python_version(),
+        # A latency is meaningless without the machine that produced it.
+        "environment": capture_environment([m.model for m in models if m.backend == "ollama"]),
         "records": len(records),
     }
     (run_dir / "meta.json").write_text(json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")

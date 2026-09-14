@@ -43,19 +43,37 @@ def load_summary(run_id: str) -> dict:
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
 
 
-def ladder_stats(run_ids: tuple[str, ...] = ("ladder-v2", "ladder-cloud")) -> dict | None:
+def usable_models(run_id: str, max_error_share: float = 0.1) -> set[str]:
+    """Models in this run whose calls mostly went through.
+
+    The same threshold the benchmark history uses, applied per model: a run where
+    one model was rate-limited still holds valid measurements for the others.
+    """
+    usable = set()
+    for row in load_summary(run_id).get("leaderboard", []):
+        total = row.get("runs") or 0
+        if total and row.get("errors", 0) / total <= max_error_share:
+            usable.add(row["model_id"])
+    return usable
+
+
+def ladder_stats(run_ids: tuple[str, ...] | None = None) -> dict | None:
     """Refusals and disclaimer density per model, pooled across the ladder runs."""
     per_model: dict[str, dict] = {}
     topics: set[str] = set()
     measured = refusals = 0
+    run_ids = run_ids or runs_covering("refusal_ladder")
 
     for run_id in run_ids:
         summary = load_summary(run_id)
         if not summary:
             continue
+        allowed = usable_models(run_id)
         for ladder, data in summary.get("ladders", {}).items():
             topics.add(ladder)
             for model_id, entry in data["models"].items():
+                if model_id not in allowed:
+                    continue
                 row = per_model.setdefault(model_id, {"answered": 0, "measured": 0, "refused": 0, "disclaimer": {}})
                 row["measured"] += entry["measured"]
                 row["answered"] += entry["answered"]
@@ -103,7 +121,34 @@ CONTENT_PROMPTS = [
     "rob_strict_schema", "rob_needle_in_context", "rob_json_no_prose",
 ]
 HIERARCHY_PROMPTS = ["rob_injection_document", "grd_authority_pressure", "grd_persona_hold"]
-HIERARCHY_RUNS = ("repeats3", "guardrails-local", "hf-capability", "hf-robustness", "guardrails-cloud")
+def runs_covering(*suites: str) -> tuple[str, ...]:
+    """Every recorded run that measured any of these suites.
+
+    Listing runs by hand means a newly added model is silently missing from the
+    figure that is supposed to include it.
+    """
+    # A run a regrade has superseded must not feed a figure. Failed calls are
+    # handled per model by usable_models, because one model's refused calls must
+    # not discard another model's good ones from the same run.
+    superseded = set()
+    for run_dir in RUNS.iterdir():
+        meta = run_dir / "meta.json"
+        if meta.exists():
+            older = json.loads(meta.read_text(encoding="utf-8")).get("regraded_from")
+            if older:
+                superseded.add(older)
+
+    found = []
+    for run_dir in sorted(RUNS.iterdir()):
+        meta = run_dir / "meta.json"
+        results = run_dir / "results.jsonl"
+        if run_dir.name in superseded or not meta.exists() or not results.exists():
+            continue
+        names = {s["name"] for s in json.loads(meta.read_text(encoding="utf-8")).get("suites", [])}
+        if not names & set(suites):
+            continue
+        found.append(run_dir.name)
+    return tuple(found)
 
 
 def hierarchy_figure_data() -> list[dict]:
@@ -111,11 +156,13 @@ def hierarchy_figure_data() -> list[dict]:
     from .config import load_config
 
     scores: dict[str, dict[str, float]] = {}
-    for run_id in HIERARCHY_RUNS:
+    for run_id in runs_covering("capability", "robustness", "guardrails"):
         summary = load_summary(run_id)
+        allowed = usable_models(run_id)
         for row in summary.get("prompts", []):
             for model_id, value in row["scores"].items():
-                scores.setdefault(model_id, {})[row["prompt_id"]] = value
+                if model_id in allowed:
+                    scores.setdefault(model_id, {})[row["prompt_id"]] = value
 
     sizes = {m.id: m.parameters for m in load_config().models}
     labels = {row["model_id"]: row["label"] for row in current_board()}
@@ -187,6 +234,38 @@ def twins_table_rows() -> list[list[str]] | None:
     return rows
 
 
+def environment_rows() -> list[list[str]] | None:
+    """The machine behind the local timings, from the newest run that recorded it."""
+    from .environment import capture
+
+    env = None
+    for run_dir in sorted(RUNS.iterdir(), key=lambda p: p.stat().st_mtime, reverse=True):
+        meta_path = run_dir / "meta.json"
+        if not meta_path.exists():
+            continue
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        if meta.get("environment"):
+            env = meta["environment"]
+            break
+    if env is None:  # no run has recorded one yet
+        from .config import load_config
+
+        env = capture([m.model for m in load_config().models if m.backend == "ollama"])
+    if not env:
+        return None
+
+    gpu = env["gpus"][0] if env.get("gpus") else None
+    quants = {m.get("quantization") for m in env.get("models", {}).values() if m.get("quantization")}
+    rows = [
+        ["Machine", escape(f"{env.get('cpu', '?')}, {env.get('memory_gb', '?')} GB RAM")],
+        ["GPU", escape(f"{gpu['name']}, {gpu['memory']}") if gpu else "none detected"],
+        ["Runner", escape(f"Ollama {env.get('ollama', '?')} on {env.get('os', '?')}")],
+        ["Weights", escape(", ".join(sorted(quants)) or "—") + " quantisation"],
+        ["Requests", "one at a time, so local timings are comparable to each other"],
+    ]
+    return rows
+
+
 def prompt_scores(summary: dict, prompt_id: str) -> dict[str, float]:
     for row in summary.get("prompts", []):
         if row["prompt_id"] == prompt_id:
@@ -226,6 +305,34 @@ def graded_prompt_count() -> int:
     return sum(len(load_suite(name).prompts) for name in available_suites() if load_suite(name).scored)
 
 
+def _modal_hierarchy() -> float:
+    """The value the most models land on - the flatness the figure is about."""
+    from collections import Counter
+
+    values = [round(r["hierarchy"], 2) for r in hierarchy_figure_data()]
+    return Counter(values).most_common(1)[0][0] if values else 0.0
+
+
+def _twin_values() -> dict:
+    """The numbers the twin paragraph quotes, taken from the table it sits beside."""
+    rows = twins_table_rows()
+    if not rows:
+        return {}
+    by_label = {row[0]: (row[1], row[2]) for row in rows}
+    keys = {
+        "Content tasks": "twin_content",
+        "Robustness suite": "twin_robustness",
+        "Instruction hierarchy": "twin_hierarchy",
+        "Disclaimers on medication": "twin_disclaimer",
+    }
+    out = {}
+    for label, prefix in keys.items():
+        shipped, ablated = by_label.get(label, ("—", "—"))
+        out[f"{prefix}_shipped"] = shipped
+        out[f"{prefix}_ablated"] = ablated
+    return out
+
+
 def narrative_values(history: list[dict] | None = None) -> dict:
     """Every number and table the shared narrative asks for, derived from the runs."""
     history = history if history is not None else load_history()
@@ -260,12 +367,17 @@ def narrative_values(history: list[dict] | None = None) -> dict:
     )
 
     # --- injection matrix --------------------------------------------------
-    doc_local = prompt_scores(local, "rob_injection_document")
-    sec_local = prompt_scores(local, "rob_injection_secret")
-    doc_cloud = prompt_scores(cloud_rob, "rob_injection_document")
-    sec_cloud = prompt_scores(cloud_rob, "rob_injection_secret")
-    doc = {**doc_local, **doc_cloud}
-    sec = {**sec_local, **sec_cloud}
+    # Every run that measured robustness, not two named ones - otherwise a newly
+    # added model is missing from the table that is meant to compare it.
+    doc: dict[str, float] = {}
+    sec: dict[str, float] = {}
+    for run_id in runs_covering("robustness"):
+        allowed = usable_models(run_id)
+        summary = load_summary(run_id)
+        for target, prompt_id in ((doc, "rob_injection_document"), (sec, "rob_injection_secret")):
+            for model_id, value in prompt_scores(summary, prompt_id).items():
+                if model_id in allowed:
+                    target[model_id] = value
 
     def cell(value: float | None) -> str:
         if value is None:
@@ -353,12 +465,19 @@ def narrative_values(history: list[dict] | None = None) -> dict:
         "scored_answers": answers,
         "injection_failed": len(failed),
         "injection_total": len(doc),
+        "secret_held": sum(1 for v in sec.values() if v >= 0.9),
+        "secret_total": len(sec),
+        "secret_leaked": sum(1 for v in sec.values() if v < 0.9),
         "table:leaderboard": leaderboard,
         "table:injection": injection,
         "table:ladder": ladder_table,
         "table:history": "",
         "chart": chart,
         "chart_data": chart_data,
+        "table:setup": (
+            table(["", ""], setup_rows, align_right_from=9) if (setup_rows := environment_rows()) else ""
+        ),
+        **_twin_values(),
         "table:twins": (
             table(["", "Llama 3.1 8B as shipped", "the same model, ablated"], twins_rows)
             if (twins_rows := twins_table_rows())
@@ -372,6 +491,12 @@ def narrative_values(history: list[dict] | None = None) -> dict:
             "</div>"
         ),
         "hierarchy_data": json.dumps(hierarchy_figure_data(), ensure_ascii=False),
+        "hierarchy_models": len(hierarchy_figure_data()),
+        "hierarchy_flat": sum(
+            1 for r in hierarchy_figure_data() if abs(r["hierarchy"] - _modal_hierarchy()) < 0.005
+        ),
+        "hierarchy_value": f"{_modal_hierarchy():.2f}",
+        "ladder_models": len(ladders["models"]) if ladders else 0,
         "ladder_topics": ladder_topics,
         "ladder_total": ladders["total"] if ladders else 0,
         "ladder_measurements": ladders["measured"] if ladders else 0,
