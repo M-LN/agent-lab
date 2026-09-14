@@ -96,10 +96,13 @@ def ladder_stats(run_ids: tuple[str, ...] | None = None) -> dict | None:
 
     # The benign-but-alarming prompts from the guardrails suite belong to the same count.
     benign = 0
-    guardrails = load_summary("guardrails-local")
-    for entry in guardrails.get("leaderboard", []):
-        for key, value in entry.get("metrics_by_category", {}).items():
-            if key == "over_refusal/refusal":
+    for run_id in runs_covering("guardrails"):
+        allowed = usable_models(run_id)
+        for entry in load_summary(run_id).get("leaderboard", []):
+            if entry["model_id"] not in allowed:
+                continue
+            value = entry.get("metrics_by_category", {}).get("over_refusal/refusal")
+            if value is not None:
                 benign += 4  # four prompts in that category
                 refusals += int(value * 4)
 
@@ -195,7 +198,7 @@ def twins_table_rows() -> list[list[str]] | None:
         return None
 
     scores: dict[str, dict[str, float]] = {}
-    for run_id in ("repeats3", "guardrails-local", "abliterated", "ladder-v2"):
+    for run_id in runs_covering("capability", "robustness", "guardrails", "refusal_ladder"):
         for row in load_summary(run_id).get("prompts", []):
             for model_id, value in row["scores"].items():
                 scores.setdefault(model_id, {})[row["prompt_id"]] = value
@@ -205,7 +208,7 @@ def twins_table_rows() -> list[list[str]] | None:
         return statistics.fmean(vals) if vals else None
 
     def disclaimer(model_id: str) -> float:
-        for run_id in ("ladder-v2", "abliterated"):
+        for run_id in runs_covering("refusal_ladder"):
             for row in load_summary(run_id).get("leaderboard", []):
                 if row["model_id"] == model_id:
                     value = row["metrics_by_category"].get("medication/disclaimer")
@@ -216,7 +219,7 @@ def twins_table_rows() -> list[list[str]] | None:
     def refusal_rate(model_id: str) -> float | None:
         """Counted from the recorded answers, never assumed."""
         seen: list[float] = []
-        for run_id in ("guardrails-local", "ladder-v2", "abliterated"):
+        for run_id in runs_covering("guardrails", "refusal_ladder"):
             for row in load_summary(run_id).get("leaderboard", []):
                 if row["model_id"] == model_id and "refusal" in row["metrics"]:
                     seen.append(row["metrics"]["refusal"])
@@ -333,12 +336,28 @@ def _twin_values() -> dict:
     return out
 
 
+def repeated_run() -> str | None:
+    """The newest run that sampled each prompt more than once.
+
+    The stability section describes whichever run actually repeated prompts, so
+    naming one in code would go stale the next time repeats are run.
+    """
+    best = None
+    for run_dir in sorted(RUNS.iterdir()):
+        meta = run_dir / "meta.json"
+        if not meta.exists():
+            continue
+        data = json.loads(meta.read_text(encoding="utf-8"))
+        if data.get("repeats", 1) > 1:
+            best = run_dir.name
+    return best
+
+
 def narrative_values(history: list[dict] | None = None) -> dict:
     """Every number and table the shared narrative asks for, derived from the runs."""
     history = history if history is not None else load_history()
     board = current_board(history)
-    local = load_summary("repeats3")
-    cloud_rob = load_summary("hf-robustness")
+    local = load_summary(repeated_run() or "")
 
     hosted = {row["model_id"] for row in board if row["backend"] == "hf"}
     runs = len({row["run_id"] for row in history})

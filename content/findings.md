@@ -203,6 +203,7 @@ Everything needed is in the repository: the harness, the prompt suites, the grad
 recorded history of every run.
 
 ```
+git clone https://github.com/M-LN/agent-lab
 pip install -r requirements.txt
 
 ollama pull llama3.1:8b                    # local models are pulled, not bundled

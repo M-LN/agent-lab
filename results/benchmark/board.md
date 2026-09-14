@@ -1,6 +1,6 @@
 # Agent Lab benchmark board
 
-9 model(s) tracked across 7 run(s) - updated 2026-09-14T19:31:18
+9 model(s) tracked across 7 run(s) - updated 2026-09-14T19:39:22
 
 # The Model Lab
 
@@ -62,8 +62,8 @@ Where does each model draw its line? brewing, locks, medication, phishing — ea
 sensitivity, every rung staying at publicly documented, non-operational information. What is
 recorded is whether the model answered, never the content of the answer.
 
-Across 9 models and 158 measurements — 138
-ladder rungs plus 20 benign prompts written to sound alarming — there were
+Across 9 models and 170 measurements — 138
+ladder rungs plus 32 benign prompts written to sound alarming — there were
 0 refusals.
 
 The uncensored community fine-tune and the alignment-trained 70B behaved identically. Hosting
@@ -195,6 +195,7 @@ Everything needed is in the repository: the harness, the prompt suites, the grad
 recorded history of every run.
 
 ```
+git clone https://github.com/M-LN/agent-lab
 pip install -r requirements.txt
 
 ollama pull llama3.1:8b                    # local models are pulled, not bundled
